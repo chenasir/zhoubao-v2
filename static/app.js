@@ -34,6 +34,7 @@ let BUSY_STATE = null;
 let LAST_DOWNLOAD_URL = "";
 let STATUS_FILTER = "all";
 let DRAGGING_ID = null;
+let SERVER_LLM_CONFIGURED = false;
 
 const BUSY_PRESETS = {
   fetch: {
@@ -101,6 +102,16 @@ function apiHeaders(json = false) {
   return headers;
 }
 
+async function apiErrorMessage(response) {
+  const text = await response.text();
+  try {
+    const data = JSON.parse(text);
+    return data.detail || data.message || text || response.statusText;
+  } catch {
+    return text || response.statusText;
+  }
+}
+
 async function apiPost(path, body) {
   showSpinner(true);
   try {
@@ -109,7 +120,7 @@ async function apiPost(path, body) {
       headers: apiHeaders(true),
       body: body ? JSON.stringify(body) : null,
     });
-    if (!r.ok) throw new Error((await r.text()) || r.statusText);
+    if (!r.ok) throw new Error(await apiErrorMessage(r));
     return await r.json();
   } finally {
     showSpinner(false);
@@ -124,7 +135,7 @@ async function apiPostBlob(path, body) {
       headers: apiHeaders(true),
       body: body ? JSON.stringify(body) : null,
     });
-    if (!r.ok) throw new Error((await r.text()) || r.statusText);
+    if (!r.ok) throw new Error(await apiErrorMessage(r));
     return {
       blob: await r.blob(),
       contentDisposition: r.headers.get("content-disposition") || "",
@@ -143,7 +154,7 @@ async function apiGetBlob(path) {
   showSpinner(true);
   try {
     const r = await fetch(path, { headers: apiHeaders() });
-    if (!r.ok) throw new Error((await r.text()) || r.statusText);
+    if (!r.ok) throw new Error(await apiErrorMessage(r));
     return {
       blob: await r.blob(),
       contentDisposition: r.headers.get("content-disposition") || "",
@@ -162,7 +173,7 @@ async function apiGet(path) {
   showSpinner(true);
   try {
     const r = await fetch(path, { headers: apiHeaders() });
-    if (!r.ok) throw new Error((await r.text()) || r.statusText);
+    if (!r.ok) throw new Error(await apiErrorMessage(r));
     return await r.json();
   } finally {
     showSpinner(false);
@@ -400,6 +411,16 @@ function getRuntimeConfigForApi() {
   return runtime;
 }
 
+function ensureLlmConfigured() {
+  if ($("openrouterApiKey").value.trim() || SERVER_LLM_CONFIGURED) return true;
+  const panel = $("runtimeConfigPanel");
+  panel.open = true;
+  panel.scrollIntoView({ behavior: "smooth", block: "center" });
+  $("openrouterApiKey").focus({ preventScroll: true });
+  alert("尚未配置 OpenRouter API Key。请在已展开的“运行配置”中填写后再生成；也可以在 Vercel 环境变量中设置 OPENROUTER_API_KEY 后重新部署。");
+  return false;
+}
+
 function applyRuntimeConfigToInputs() {
   const cfg = loadRuntimeConfig();
   $("openrouterApiKey").value = cfg.openrouterApiKey || "";
@@ -531,6 +552,12 @@ function cardHtml(it) {
   const manual = it.is_manual ? `<span class="text-[10px] bg-indigo-100 text-indigo-700 rounded-full px-2 py-0.5">manual</span>` : "";
   const layerReason = (it.layer_reasons || []).join(" / ");
   const sourceLabel = it.source || it.source_original || "";
+  const discoveredByGoogle = Boolean(it.google_news_url) || host === "news.google.com";
+  const sourceLinks = discoveredByGoogle
+    ? `<button type="button" data-resolve-original="${escapeHtml(String(it.id))}" class="text-blue-600 hover:underline">解析并打开媒体原文</button>
+       ${it.source_homepage ? `<a href="${escapeHtml(it.source_homepage)}" target="_blank" rel="noopener" class="text-slate-500 hover:underline">媒体首页</a>` : ""}
+       <a href="${escapeHtml(it.google_news_url || it.url)}" target="_blank" rel="noopener" class="text-slate-400 hover:underline">Google News 发现页</a>`
+    : `<a href="${escapeHtml(it.url)}" target="_blank" rel="noopener" class="text-blue-600 hover:underline inline-flex items-center gap-1">原文 <span class="text-slate-400">(${escapeHtml(host)})</span></a>`;
   return `
     <div class="news-card flex gap-3 p-4 border border-slate-100 rounded-2xl bg-white/88 ${it.selected ? "selected" : ""}" draggable="true" data-id="${escapeHtml(String(it.id))}">
       <input type="checkbox" data-id="${escapeHtml(String(it.id))}" ${it.selected ? "checked" : ""} class="mt-1 h-4 w-4 flex-none cursor-pointer accent-blue-600" />
@@ -545,7 +572,8 @@ function cardHtml(it) {
           ${route}
           ${watch}
           ${topic}
-          <span class="text-[11px] text-slate-500 bg-slate-50 rounded-full px-2 py-0.5">Source: ${escapeHtml(sourceLabel)}</span>
+          <span class="text-[11px] text-slate-500 bg-slate-50 rounded-full px-2 py-0.5">媒体来源: ${escapeHtml(sourceLabel)}</span>
+          ${discoveredByGoogle ? `<span class="text-[10px] bg-amber-50 text-amber-700 rounded-full px-2 py-0.5">发现渠道: Google News</span>` : ""}
           <span class="text-[11px] text-slate-400">${date}</span>
         </div>
         <a href="${escapeHtml(it.url)}" target="_blank" rel="noopener"
@@ -555,10 +583,7 @@ function cardHtml(it) {
         ${it.title_zh ? `<div class="mt-1 text-sm leading-snug text-slate-600">${escapeHtml(it.title_zh)}</div>` : ""}
         ${it.summary ? `<p class="text-xs leading-relaxed text-slate-500 mt-2 line-clamp-2">${escapeHtml(it.summary.slice(0, 260))}</p>` : ""}
         <div class="mt-3 flex items-center gap-3 text-[11px] flex-wrap">
-          <a href="${escapeHtml(it.url)}" target="_blank" rel="noopener"
-             class="text-blue-600 hover:underline inline-flex items-center gap-1">
-            原文 <span class="text-slate-400">(${escapeHtml(host)})</span>
-          </a>
+          ${sourceLinks}
           <button type="button" data-copy="${escapeHtml(it.url)}"
                   class="text-slate-500 hover:text-slate-700">复制链接</button>
           <button type="button" data-related="${escapeHtml(String(it.id))}"
@@ -686,6 +711,33 @@ function renderCandidates() {
       const item = CANDIDATES.find((x) => String(x.id) === String(id));
       if (!item) return;
       await showRelatedSources(item);
+    });
+  });
+
+  panels.querySelectorAll("button[data-resolve-original]").forEach((b) => {
+    b.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const id = b.getAttribute("data-resolve-original");
+      const item = CANDIDATES.find((x) => String(x.id) === String(id));
+      if (!item) return;
+      const pendingTab = window.open("about:blank", "_blank");
+      const oldText = b.textContent;
+      b.disabled = true;
+      b.textContent = "正在解析媒体原文…";
+      try {
+        const data = await apiPost("/api/resolve-url", { url: item.google_news_url || item.url });
+        if (!data.resolved) throw new Error("该条链接暂时无法从 Google News 还原，请稍后重试");
+        item.google_news_url = item.google_news_url || item.url;
+        item.url = data.url;
+        persistCandidates();
+        if (pendingTab) pendingTab.location.href = data.url;
+        renderCandidates();
+      } catch (error) {
+        pendingTab?.close();
+        b.disabled = false;
+        b.textContent = oldText;
+        alert("解析原文失败：" + error.message);
+      }
     });
   });
 
@@ -848,6 +900,7 @@ async function init() {
   applyRuntimeConfigToInputs();
 
   const health = await fetch("/api/health").then((r) => r.json());
+  SERVER_LLM_CONFIGURED = Boolean(health.llm_configured);
   if (health.auth_required && !$("appAccessToken").value.trim()) {
     const token = window.prompt("该部署已启用内部访问口令，请输入：") || "";
     $("appAccessToken").value = token.trim();
@@ -889,6 +942,7 @@ $("btnFetch").addEventListener("click", async () => {
 });
 
 $("btnScore").addEventListener("click", async () => {
+  if (!ensureLlmConfigured()) return;
   setStatus("LLM 打分中……");
   try {
     const runtime = getRuntimeConfigForApi();
@@ -966,7 +1020,15 @@ $("btnSources").addEventListener("click", async () => {
   try {
     const data = await apiGet("/api/sources");
     const body = $("sourcesBody");
-    body.innerHTML = data
+    const allSources = data.flatMap((country) => country.sources || []);
+    const directCount = allSources.filter((source) => source.type === "rss").length;
+    const discoveryCount = allSources.length - directCount;
+    const summary = `
+      <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
+        当前共 ${allSources.length} 个检索策略：${directCount} 个可用的直接 RSS，${discoveryCount} 个通过 Google News 定向检索指定媒体、机构或重点公司。
+        Google News 是发现渠道，不是新闻发布方；候选卡片中的“媒体来源”才是原始发布机构。
+      </div>`;
+    body.innerHTML = summary + data
       .map((c) => {
         const rows = (c.sources || [])
           .map((s) => {
@@ -989,7 +1051,7 @@ $("btnSources").addEventListener("click", async () => {
           <div class="border border-slate-200 rounded-md overflow-hidden">
             <div class="bg-slate-50 px-3 py-1.5 font-semibold text-sm text-[#1f3a6e]">
               ${escapeHtml(c.name_en)} · ${escapeHtml(c.name_zh)}
-              <span class="text-xs text-slate-500 font-normal">（${(c.sources || []).length} 个信源）</span>
+              <span class="text-xs text-slate-500 font-normal">（${(c.sources || []).length} 个检索策略）</span>
             </div>
             <table class="w-full"><tbody>${rows}</tbody></table>
           </div>`;
@@ -1005,6 +1067,7 @@ $("btnSources").addEventListener("click", async () => {
 $("btnGenerate").addEventListener("click", async () => {
   const selected = CANDIDATES.filter((x) => x.selected);
   if (!selected.length) return alert("请至少勾选一条新闻");
+  if (!ensureLlmConfigured()) return;
   const byCountry = {};
   selected.forEach((item) => (byCountry[item.country_code] = (byCountry[item.country_code] || 0) + 1));
   const quotaWarnings = Object.entries(byCountry)
@@ -1022,12 +1085,30 @@ $("btnGenerate").addEventListener("click", async () => {
     const result = await withBusy("generate", async () => {
       let completed = 0;
       const concurrency = Math.max(1, Math.min(4, runtime.llm_concurrency || 2));
-      const formattedItems = await mapWithConcurrency(generationSnapshot, concurrency, async (candidate) => {
-        const response = await apiPost("/api/format-item", { candidate, runtime });
-        completed += 1;
-        setBusyStage(`正在生成双语稿件… ${completed}/${generationSnapshot.length}`);
-        return response.item;
+      const outcomes = await mapWithConcurrency(generationSnapshot, concurrency, async (candidate) => {
+        try {
+          const response = await apiPost("/api/format-item", { candidate, runtime });
+          if (response.item?.url && response.item.url !== candidate.url) {
+            const liveItem = CANDIDATES.find((item) => String(item.id) === String(candidate.id));
+            if (liveItem) {
+              liveItem.google_news_url = liveItem.google_news_url || liveItem.url;
+              liveItem.url = response.item.url;
+            }
+          }
+          return { item: response.item, error: "" };
+        } catch (error) {
+          return { item: null, error: `${candidate.title}: ${error.message}` };
+        } finally {
+          completed += 1;
+          setBusyStage(`正在生成双语稿件… ${completed}/${generationSnapshot.length}`);
+        }
       });
+      const formattedItems = outcomes.filter((outcome) => outcome.item).map((outcome) => outcome.item);
+      const clientFailures = outcomes.filter((outcome) => outcome.error);
+      if (!formattedItems.length) {
+        throw new Error(`所有新闻均生成失败。${clientFailures[0]?.error || "请检查模型和 API 配置"}`);
+      }
+      persistCandidates();
       setBusyStage("双语稿件完成，正在套用 Word 模板…");
       const { blob, contentDisposition, selectedCount, dedupedCount, formattedCount, failedCount, warningCount } = await apiPostBlob("/api/render", {
         formatted_items: formattedItems,
@@ -1036,7 +1117,15 @@ $("btnGenerate").addEventListener("click", async () => {
         end_date: $("endDate").value,
       });
       const filename = extractFilename(contentDisposition, `issue_${$("issueNumber").value || 137}_bilingual_docx.zip`);
-      return { blob, filename, selectedCount, dedupedCount, formattedCount, failedCount, warningCount };
+      return {
+        blob,
+        filename,
+        selectedCount,
+        dedupedCount,
+        formattedCount,
+        failedCount: Number(failedCount || 0) + clientFailures.length,
+        warningCount,
+      };
     });
     showDownloadResult(result.blob, result.filename);
     const countTip = result.selectedCount

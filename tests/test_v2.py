@@ -8,10 +8,14 @@ from fastapi.testclient import TestClient
 from app.config import _env_int, load_sources, settings
 from app.main import app
 from app.models import FormattedItem
-from app.retriever import _validate_public_url, _watchlist_queries
+from app.retriever import _validate_public_url, _watchlist_queries, resolve_publisher_url
 
 
 class SourceRegistryTests(unittest.TestCase):
+    def test_non_google_url_does_not_need_resolution(self):
+        url = "https://www.reuters.com/world/example"
+        self.assertEqual(resolve_publisher_url(url), url)
+
     def test_registry_has_four_countries_and_metadata(self):
         countries = load_sources()
         self.assertEqual([row["code"] for row in countries], ["KSA", "UAE", "KZ", "KR"])
@@ -72,6 +76,34 @@ class SecurityTests(unittest.TestCase):
 
 
 class StatelessGenerationTests(unittest.TestCase):
+    def test_resolve_url_endpoint(self):
+        google_url = "https://news.google.com/rss/articles/test"
+        publisher_url = "https://example.com/news"
+        with patch("app.main.retriever.resolve_publisher_url", return_value=publisher_url):
+            with TestClient(app) as client:
+                response = client.post("/api/resolve-url", json={"url": google_url})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"url": publisher_url, "resolved": True})
+
+    def test_missing_llm_key_returns_readable_error(self):
+        payload = {
+            "candidate": {
+                "country_code": "KSA",
+                "source": "Test",
+                "title": "Test title",
+                "url": "https://example.com/news",
+                "selected": True,
+            },
+            "runtime": {},
+        }
+        from app.llm import LlmConfigurationError
+
+        with patch("app.main.formatter.format_one", side_effect=LlmConfigurationError("请配置 API Key")):
+            with TestClient(app) as client:
+                response = client.post("/api/format-item", json=payload)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["detail"], "请配置 API Key")
+
     def test_format_item_endpoint_returns_structured_item(self):
         item = FormattedItem(
             country_code="KSA",

@@ -6,11 +6,15 @@ import logging
 from typing import Any, Mapping
 
 from openai import OpenAI
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_not_exception_type, stop_after_attempt, wait_exponential
 
 from .config import settings
 
 logger = logging.getLogger(__name__)
+
+
+class LlmConfigurationError(RuntimeError):
+    pass
 
 
 def _resolve_runtime_config(runtime_config: Mapping[str, Any] | None = None) -> dict[str, Any]:
@@ -37,7 +41,12 @@ def _client(runtime_config: Mapping[str, Any] | None = None) -> OpenAI:
     )
 
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=20))
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=20),
+    retry=retry_if_not_exception_type(LlmConfigurationError),
+    reraise=True,
+)
 def chat(
     system: str,
     user: str,
@@ -48,7 +57,7 @@ def chat(
     """发起一次聊天补全。response_format_json 仅用于提示 LLM 输出 JSON。"""
     resolved = _resolve_runtime_config(runtime_config)
     if not resolved["openrouter_api_key"]:
-        raise RuntimeError("OpenRouter API key 未配置，请在页面中填写或在 .env 中设置。")
+        raise LlmConfigurationError("未配置 OpenRouter API Key。请展开页面中的“运行配置”后填写，或在 Vercel 环境变量中设置 OPENROUTER_API_KEY。")
     messages = [
         {"role": "system", "content": system},
         {"role": "user", "content": user},

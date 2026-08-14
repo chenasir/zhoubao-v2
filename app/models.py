@@ -99,6 +99,10 @@ class RelatedSourcesRequest(BaseModel):
     current_url: str = ""
 
 
+class ResolveUrlRequest(BaseModel):
+    url: str
+
+
 class FormatItemRequest(BaseModel):
     candidate: CandidatePayload
     runtime: RuntimeLlmConfig

@@ -13,9 +13,9 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import filter as flt, filter_pipeline, formatter, renderer, retriever, title_translator
+from . import filter as flt, filter_pipeline, formatter, llm, renderer, retriever, title_translator
 from .config import STATIC_DIR, get_country_order_map, get_source_order_map, load_sources, settings
-from .models import FormatItemRequest, GenerateRequest, ManualUrlRequest, RelatedSourcesRequest, RenderRequest, ScoreRequest
+from .models import FormatItemRequest, GenerateRequest, ManualUrlRequest, RelatedSourcesRequest, RenderRequest, ResolveUrlRequest, ScoreRequest
 
 logging.basicConfig(
     level=logging.INFO,
@@ -73,7 +73,12 @@ def index() -> HTMLResponse:
 
 @app.get("/api/health")
 def api_health():
-    return {"ok": True, "version": app.version, "auth_required": bool(settings.app_access_token)}
+    return {
+        "ok": True,
+        "version": app.version,
+        "auth_required": bool(settings.app_access_token),
+        "llm_configured": bool(settings.openrouter_api_key),
+    }
 
 
 @app.get("/api/countries")
@@ -175,6 +180,12 @@ def api_related_sources(req: RelatedSourcesRequest):
     return {"items": items}
 
 
+@app.post("/api/resolve-url")
+def api_resolve_url(req: ResolveUrlRequest):
+    resolved = retriever.resolve_publisher_url(req.url)
+    return {"url": resolved, "resolved": resolved != req.url}
+
+
 @app.post("/api/clear")
 def api_clear():
     return {"deleted": 0}
@@ -188,7 +199,14 @@ def api_generate(req: GenerateRequest):
 
 @app.post("/api/format-item")
 def api_format_item(req: FormatItemRequest):
-    item = formatter.format_one(req.candidate.model_dump(), runtime_config=req.runtime.model_dump())
+    try:
+        item = formatter.format_one(req.candidate.model_dump(), runtime_config=req.runtime.model_dump())
+    except llm.LlmConfigurationError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except Exception as exc:
+        logger.exception("format-item failed for %s", req.candidate.id)
+        message = str(exc).strip() or exc.__class__.__name__
+        raise HTTPException(502, f"LLM 格式化失败：{message[:400]}") from exc
     if item is None:
         raise HTTPException(500, "Selected news item could not be formatted")
     return {"item": item.model_dump()}

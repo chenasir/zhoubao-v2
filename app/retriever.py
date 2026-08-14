@@ -8,11 +8,13 @@
 """
 from __future__ import annotations
 
+import json
 import logging
 import ipaddress
 import socket
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from typing import Iterable
 from urllib.parse import quote_plus, urljoin, urlparse
 
@@ -237,6 +239,55 @@ def fetch_public_response(url: str, timeout: float = 25.0) -> httpx.Response:
             response.raise_for_status()
             return response
     raise ValueError("Too many redirects")
+
+
+def is_google_news_url(url: str) -> bool:
+    parsed = urlparse(url or "")
+    return parsed.hostname == "news.google.com" and "/articles/" in parsed.path
+
+
+@lru_cache(maxsize=512)
+def resolve_publisher_url(url: str) -> str:
+    """Best-effort conversion of a Google News RSS link to the publisher URL."""
+    if not is_google_news_url(url):
+        return url
+    article_id = urlparse(url).path.rstrip("/").split("/")[-1]
+    if not article_id:
+        return url
+    try:
+        with httpx.Client(timeout=15.0, headers=HTTP_HEADERS, follow_redirects=True) as client:
+            page = client.get(f"https://news.google.com/articles/{article_id}")
+            page.raise_for_status()
+            node = BeautifulSoup(page.text, "lxml").select_one("c-wiz > div[jscontroller]")
+            if node is None:
+                return url
+            signature = node.get("data-n-a-sg")
+            timestamp = node.get("data-n-a-ts")
+            if not signature or not timestamp:
+                return url
+            rpc_payload = [
+                "Fbv4je",
+                (
+                    '["garturlreq",[["X","X",["X","X"],null,null,1,1,"US:en",null,1,'
+                    'null,null,null,null,null,0,1],"X","X",1,[1,1,1],1,1,null,0,0,null,0],'
+                    f'"{article_id}",{timestamp},"{signature}"]'
+                ),
+            ]
+            response = client.post(
+                "https://news.google.com/_/DotsSplashUi/data/batchexecute",
+                data={"f.req": json.dumps([[rpc_payload]])},
+                headers={"Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"},
+            )
+            response.raise_for_status()
+            envelope = json.loads(response.text.split("\n\n", 1)[1])[:-2]
+            decoded = json.loads(envelope[0][2])[1]
+            if not isinstance(decoded, str) or is_google_news_url(decoded):
+                return url
+            _validate_public_url(decoded)
+            return decoded
+    except Exception as exc:
+        logger.info("Google News URL decode failed: %s -> %s", url, exc)
+        return url
 
 
 # ---------------- 正文抓取（选中后再调用） ---------------- #

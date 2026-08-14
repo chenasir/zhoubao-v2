@@ -16,7 +16,7 @@ V2 在原版基础上重点改进了信源完整性、失效源维护、抓取�
 
 - 信源从“媒体列表”升级为 Tier 1/2/3 分层注册表。
 - 清除或替换 8 个已经失效的直连 RSS。
-- 新增 SPA、PIF、CMA、Saudi Exchange、ADQ、Mubadala、ADX、DFM、AIFC、AIX、KASE、Kazakh Invest、FSC、KRX、Invest Korea 等一手来源。
+- 新增针对 SPA、PIF、CMA、Saudi Exchange、ADQ、Mubadala、ADX、DFM、AIFC、AIX、KASE、Kazakh Invest、FSC、KRX、Invest Korea 等一手机构的定向发现策略。
 - 四个地区均启用 Watch List 定向查询。
 - Watch List 每 4 家公司组合查询，请求数显著低于逐家公司查询。
 - 新闻抓取改为受控并发，并支持每个来源独立设置结果上限。
@@ -79,6 +79,8 @@ LOOKBACK_DAYS=7
 - `config/watchlist.yaml`：客户与重点机构名单
 - `config/filtering.yaml`：四层筛选规则
 - `config/source_aliases.yaml`：媒体名称归一化和主页
+
+当前注册表包含 80 个检索策略，其中 3 个是已验证的直接 RSS，其余使用 Google News 对指定媒体、机构网站或 Watch List 进行定向发现。Google News 是传输与发现渠道，候选条目的 `source` 才是实际发布媒体。页面支持按需将 Google News 跳转链接解析成媒体原文链接。
 
 ## Vercel
 
