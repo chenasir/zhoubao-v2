@@ -62,7 +62,7 @@ const BUSY_PRESETS = {
   generate: {
     title: "正在生成双语 docx",
     text: "系统正在调用 LLM 重写并套用 Word 模板，请耐心等待。",
-    estimatedMs: 180000,
+    estimatedMs: 0,
     stages: [
       { pct: 8, text: "正在整理你勾选的新闻…" },
       { pct: 30, text: "正在调用 AI 模型生成中英双语稿件…" },
@@ -229,23 +229,25 @@ function startBusy(preset) {
   setBusyProgress(3);
   toggleControlsDisabled(true);
 
-  BUSY_STATE.timer = setInterval(() => {
-    if (!BUSY_STATE) return;
-    const elapsed = Date.now() - BUSY_STATE.startedAt;
-    const target = Math.min(93, 3 + (elapsed / Math.max(1000, preset.estimatedMs)) * 90);
-    BUSY_STATE.progress = Math.max(BUSY_STATE.progress, target);
-    const currentStage =
-      [...(preset.stages || [])]
-        .reverse()
-        .find((stage) => BUSY_STATE.progress >= stage.pct) || preset.stages?.[0];
-    if (currentStage) setBusyStage(currentStage.text);
-    setBusyProgress(BUSY_STATE.progress);
-  }, 300);
+  if (preset.estimatedMs > 0) {
+    BUSY_STATE.timer = setInterval(() => {
+      if (!BUSY_STATE) return;
+      const elapsed = Date.now() - BUSY_STATE.startedAt;
+      const target = Math.min(93, 3 + (elapsed / Math.max(1000, preset.estimatedMs)) * 90);
+      BUSY_STATE.progress = Math.max(BUSY_STATE.progress, target);
+      const currentStage =
+        [...(preset.stages || [])]
+          .reverse()
+          .find((stage) => BUSY_STATE.progress >= stage.pct) || preset.stages?.[0];
+      if (currentStage) setBusyStage(currentStage.text);
+      setBusyProgress(BUSY_STATE.progress);
+    }, 300);
+  }
 }
 
 async function finishBusy(finalText) {
   if (!BUSY_STATE) return;
-  clearInterval(BUSY_STATE.timer);
+  if (BUSY_STATE.timer) clearInterval(BUSY_STATE.timer);
   if (finalText) setBusyStage(finalText);
   setBusyProgress(100);
   await sleep(250);
@@ -1100,6 +1102,9 @@ $("btnGenerate").addEventListener("click", async () => {
           return { item: null, error: `${candidate.title}: ${error.message}` };
         } finally {
           completed += 1;
+          const actualProgress = 5 + (completed / generationSnapshot.length) * 82;
+          if (BUSY_STATE) BUSY_STATE.progress = actualProgress;
+          setBusyProgress(actualProgress);
           setBusyStage(`正在生成双语稿件… ${completed}/${generationSnapshot.length}`);
         }
       });
@@ -1110,6 +1115,7 @@ $("btnGenerate").addEventListener("click", async () => {
       }
       persistCandidates();
       setBusyStage("双语稿件完成，正在套用 Word 模板…");
+      setBusyProgress(92);
       const { blob, contentDisposition, selectedCount, dedupedCount, formattedCount, failedCount, warningCount } = await apiPostBlob("/api/render", {
         formatted_items: formattedItems,
         issue_number: Number($("issueNumber").value || 137),

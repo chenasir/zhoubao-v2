@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
+from app import formatter
 from app.config import _env_int, load_sources, settings
 from app.main import app
 from app.models import FormattedItem
@@ -76,6 +77,33 @@ class SecurityTests(unittest.TestCase):
 
 
 class StatelessGenerationTests(unittest.TestCase):
+    def test_fast_formatter_uses_two_core_llm_calls(self):
+        row = {
+            "country_code": "KSA",
+            "source": "Test",
+            "title": "Company invests USD 1 million",
+            "url": "",
+            "published_at": "2026-08-14T00:00:00+00:00",
+            "fetched_body": ("Company announced a USD 1 million investment on August 14, 2026. " * 8),
+        }
+        english = {
+            "en_title": "Company invests USD 1 million",
+            "en_body": "The company announced a USD 1 million investment on August 14, 2026.",
+            "facts": {"amounts": ["USD 1 million"], "dates": ["August 14, 2026"]},
+        }
+        chinese = {
+            "cn_title": "公司投资100万美元",
+            "cn_body": "8月14日，该公司宣布投资100万美元。",
+        }
+        with (
+            patch("app.formatter._generate_english", return_value=english) as generate_english,
+            patch("app.formatter._translate_chinese", return_value=chinese) as translate_chinese,
+        ):
+            item = formatter.format_one(row, runtime_config={"openrouter_api_key": "test"})
+        self.assertIsNotNone(item)
+        self.assertEqual(generate_english.call_count, 1)
+        self.assertEqual(translate_chinese.call_count, 1)
+
     def test_resolve_url_endpoint(self):
         google_url = "https://news.google.com/rss/articles/test"
         publisher_url = "https://example.com/news"

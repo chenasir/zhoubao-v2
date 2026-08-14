@@ -10,7 +10,7 @@ import re
 from datetime import date, datetime
 from typing import Any, Iterable, Mapping
 
-from . import article_fetch, bilingual_guard, fact_guard, llm, source_utils
+from . import article_fetch, fact_guard, llm, source_utils
 from .article_meta import is_suspicious_feed_date, resolve_publication_date
 from .models import FormattedItem
 
@@ -247,66 +247,34 @@ def format_one(
     if not source:
         source = row.get("source") or "Source"
 
-    retry_note = ""
-    last_item: FormattedItem | None = None
-    for attempt in range(2):
-        en_data = _generate_english(row, source_text, runtime_config, retry_note=retry_note)
-        en_title = str(en_data.get("en_title", "")).strip()
-        en_body = str(en_data.get("en_body", "")).strip()
-        facts = en_data.get("facts") or {}
-
-        cn_data = _translate_chinese(en_title, en_body, facts, runtime_config)
-        item = FormattedItem(
-            country_code=row["country_code"],
-            cn_title=str(cn_data.get("cn_title", "")).strip(),
-            cn_body=str(cn_data.get("cn_body", "")).strip(),
-            en_title=en_title,
-            en_body=en_body,
-            source_label_en="",
-            source_label_zh="",
-            url=row["url"],
-            source_name=row.get("source", ""),
-            source_url=row.get("url") or row.get("source_homepage", ""),
-        )
-        item = _postprocess_item(item, source=source, published=published)
-
-        generated_text = "\n".join([item.cn_title, item.cn_body, item.en_title, item.en_body])
-        fact_check = fact_guard.check_formatted_facts(source_text, generated_text)
-        bilingual_check = bilingual_guard.check_bilingual_consistency(
-            item.cn_title,
-            item.cn_body,
-            item.en_title,
-            item.en_body,
-            runtime_config=runtime_config,
-        )
-        warnings = list(fact_check.warnings)
-        if not bilingual_check.ok:
-            warnings.extend([f"bilingual: {w}" for w in bilingual_check.warnings])
-            cn_retry = _translate_chinese(item.en_title, item.en_body, facts, runtime_config)
-            item.cn_title = _postprocess_cn(_strip_source_citation(str(cn_retry.get("cn_title", "")).strip()))
-            item.cn_body = _postprocess_cn(_strip_source_citation(str(cn_retry.get("cn_body", "")).strip()))
-            item = _postprocess_item(item, source=source, published=published)
-
-        item.fact_check_warnings = warnings
-        if fact_check.ok and bilingual_check.ok and not _is_placeholder_item(item):
-            return item
-
-        last_item = item
-        logger.warning("Formatting guard warning for %s: %s", row.get("url"), "; ".join(warnings))
-        if _is_placeholder_item(item):
-            warnings.append("placeholder news text detected")
-        retry_note = (
-            "\n\nFACT GUARD RETRY:\n"
-            "Your previous draft failed factual checks. Regenerate the English item.\n"
-            "Do not change or omit any amount, date, percentage, stake, valuation, capacity, coupon, tenor, party, or milestone.\n"
-            f"Warnings to fix: {warnings}\n"
-        )
-
-    if last_item and not _is_placeholder_item(last_item):
-        return last_item
-    if last_item:
+    en_data = _generate_english(row, source_text, runtime_config)
+    en_title = str(en_data.get("en_title", "")).strip()
+    en_body = str(en_data.get("en_body", "")).strip()
+    facts = en_data.get("facts") or {}
+    cn_data = _translate_chinese(en_title, en_body, facts, runtime_config)
+    item = FormattedItem(
+        country_code=row["country_code"],
+        cn_title=str(cn_data.get("cn_title", "")).strip(),
+        cn_body=str(cn_data.get("cn_body", "")).strip(),
+        en_title=en_title,
+        en_body=en_body,
+        source_label_en="",
+        source_label_zh="",
+        url=row["url"],
+        source_name=row.get("source", ""),
+        source_url=row.get("url") or row.get("source_homepage", ""),
+    )
+    item = _postprocess_item(item, source=source, published=published)
+    if _is_placeholder_item(item):
         logger.warning("Skip placeholder formatted item for %s", row.get("url"))
-    return None
+        return None
+
+    generated_text = "\n".join([item.cn_title, item.cn_body, item.en_title, item.en_body])
+    fact_check = fact_guard.check_formatted_facts(source_text, generated_text)
+    item.fact_check_warnings = list(fact_check.warnings)
+    if item.fact_check_warnings:
+        logger.warning("Formatting guard warning for %s: %s", row.get("url"), "; ".join(item.fact_check_warnings))
+    return item
 
 
 def format_many(
