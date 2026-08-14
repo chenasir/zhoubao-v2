@@ -6,6 +6,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from app import formatter
+from app import source_utils
 from app.config import _env_int, load_sources, settings
 from app.main import app
 from app.models import FormattedItem
@@ -16,6 +17,20 @@ class SourceRegistryTests(unittest.TestCase):
     def test_non_google_url_does_not_need_resolution(self):
         url = "https://www.reuters.com/world/example"
         self.assertEqual(resolve_publisher_url(url), url)
+
+    def test_real_publisher_is_not_overwritten_by_google_news_host(self):
+        google_url = "https://news.google.com/rss/articles/example"
+        self.assertEqual(source_utils.normalize_source_name("SWFI", url=google_url), "SWFI")
+
+    def test_generic_news_label_falls_back_to_publisher_homepage(self):
+        self.assertEqual(
+            source_utils.best_source_name(
+                "News",
+                article_url="https://news.google.com/rss/articles/example",
+                homepage_url="https://www.reuters.com/",
+            ),
+            "Reuters",
+        )
 
     def test_registry_has_four_countries_and_metadata(self):
         countries = load_sources()
@@ -103,6 +118,41 @@ class StatelessGenerationTests(unittest.TestCase):
         self.assertIsNotNone(item)
         self.assertEqual(generate_english.call_count, 1)
         self.assertEqual(translate_chinese.call_count, 1)
+
+    def test_formatter_uses_publisher_name_and_direct_article_link(self):
+        google_url = "https://news.google.com/rss/articles/example"
+        direct_url = "https://www.reuters.com/world/example"
+        row = {
+            "country_code": "UAE",
+            "source": "News",
+            "source_homepage": "https://www.reuters.com/",
+            "title": "Company announces investment",
+            "url": google_url,
+            "published_at": "2026-08-14T00:00:00+00:00",
+            "fetched_body": ("The company announced an investment on August 14, 2026. " * 8),
+        }
+        english = {
+            "en_title": "Company announces investment",
+            "en_body": "The company announced an investment on August 14, 2026.",
+            "facts": {"dates": ["August 14, 2026"]},
+        }
+        chinese = {"cn_title": "公司宣布投资", "cn_body": "8月14日，该公司宣布一项投资。"}
+        with (
+            patch("app.formatter.retriever.resolve_publisher_url", return_value=direct_url),
+            patch("app.formatter.article_fetch.fetch_article") as fetch_article,
+            patch("app.formatter._generate_english", return_value=english),
+            patch("app.formatter._translate_chinese", return_value=chinese),
+        ):
+            fetch_article.return_value.body = row["fetched_body"]
+            fetch_article.return_value.html = ""
+            fetch_article.return_value.published_at = None
+            item = formatter.format_one(row, runtime_config={"openrouter_api_key": "test"})
+        self.assertIsNotNone(item)
+        self.assertEqual(item.source_name, "Reuters")
+        self.assertEqual(item.source_url, direct_url)
+        self.assertIn("Source: Reuters", item.source_label_en)
+        self.assertIn("来源：Reuters", item.source_label_zh)
+        self.assertNotIn("Source: News", item.source_label_en)
 
     def test_resolve_url_endpoint(self):
         google_url = "https://news.google.com/rss/articles/test"

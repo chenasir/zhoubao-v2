@@ -10,7 +10,7 @@ import re
 from datetime import date, datetime
 from typing import Any, Iterable, Mapping
 
-from . import article_fetch, fact_guard, llm, source_utils
+from . import article_fetch, fact_guard, llm, retriever, source_utils
 from .article_meta import is_suspicious_feed_date, resolve_publication_date
 from .models import FormattedItem
 
@@ -226,10 +226,16 @@ def format_one(
 ) -> FormattedItem | None:
     """把一条 candidate 转成 FormattedItem。先英文，后中文翻译。"""
     html = ""
+    original_url = row.get("url") or ""
+    publisher_url = retriever.resolve_publisher_url(original_url) if original_url else ""
+    # Use the publisher article for body/date extraction when Google News can be
+    # decoded. Keep the Google URL as a working fallback because it redirects to
+    # the article and remains editable as a normal Word hyperlink.
+    fetch_url = publisher_url or original_url
     body = row.get("fetched_body") or ""
     suspicious_date = is_suspicious_feed_date(row.get("published_at"))
-    if row.get("url") and (len(body) < 300 or suspicious_date):
-        article = article_fetch.fetch_article(row["url"])
+    if fetch_url and (len(body) < 300 or suspicious_date):
+        article = article_fetch.fetch_article(fetch_url)
         body = article.body or body or row.get("summary", "")
         html = article.html
         if body:
@@ -243,9 +249,11 @@ def format_one(
         published = _resolve_row_publication_date(row, html, body)
     row["resolved_publication_date"] = published.isoformat() if published else None
 
-    source = source_utils.normalize_source_name(row.get("source") or "", url=row.get("url") or "")
-    if not source:
-        source = row.get("source") or "Source"
+    source = source_utils.best_source_name(
+        row.get("source") or "",
+        article_url=publisher_url,
+        homepage_url=row.get("source_homepage") or "",
+    )
 
     en_data = _generate_english(row, source_text, runtime_config)
     en_title = str(en_data.get("en_title", "")).strip()
@@ -260,9 +268,9 @@ def format_one(
         en_body=en_body,
         source_label_en="",
         source_label_zh="",
-        url=row["url"],
-        source_name=row.get("source", ""),
-        source_url=row.get("url") or row.get("source_homepage", ""),
+        url=original_url,
+        source_name=source,
+        source_url=publisher_url or original_url or row.get("source_homepage", ""),
     )
     item = _postprocess_item(item, source=source, published=published)
     if _is_placeholder_item(item):

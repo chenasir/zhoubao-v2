@@ -6,6 +6,20 @@ from urllib.parse import urlparse
 from .config import load_source_aliases
 
 
+GENERIC_SOURCE_NAMES = {
+    "",
+    "news",
+    "google news",
+    "source",
+    "original publisher",
+}
+
+
+def is_generic_source_name(raw: str) -> bool:
+    """Return True for discovery-channel labels that are not publisher names."""
+    return (raw or "").strip().lower() in GENERIC_SOURCE_NAMES
+
+
 def source_from_google_title(title: str) -> tuple[str, str]:
     """Split Google News title like 'Headline - Reuters' into headline/source."""
     if " - " not in title:
@@ -41,6 +55,14 @@ def normalize_source_name(raw: str, url: str = "") -> str:
         return "Yahoo Finance"
     if "business korea" in low:
         return "Business Korea"
+    if "swfinstitute" in low or "sovereign wealth fund institute" in low:
+        return "SWFI"
+    if "mitsloanme" in low or "mit sloan management review middle east" in low:
+        return "MIT Sloan Management Review Middle East"
+    if "therealdeal" in low or "the real deal" in low:
+        return "The Real Deal"
+    if "egyptoil" in low or "egypt oil & gas" in low or "egypt oil and gas" in low:
+        return "Egypt Oil & Gas"
     if "pulse" in low or "maeil" in low:
         return "Pulse"
     if "qazinform" in low:
@@ -58,13 +80,34 @@ def normalize_source_name(raw: str, url: str = "") -> str:
     if "korea exchange" in low:
         return "Korea Exchange"
 
+    # A publisher name supplied by the RSS item is more authoritative than the
+    # discovery URL. In particular, Google News article URLs must never turn a
+    # real publisher such as "SWFI" into the generic label "News".
+    if source and not is_generic_source_name(source):
+        return source
+
     host = urlparse(url or "").netloc.replace("www.", "")
     if host:
         host_name = host.split(":")[0]
+        if host_name == "news.google.com" or host_name.endswith(".news.google.com"):
+            return ""
         if host_name in aliases.get("aliases", {}):
             return aliases["aliases"][host_name]
         return host_name.split(".")[0].replace("-", " ").title()
-    return source
+    return "" if is_generic_source_name(source) else source
+
+
+def best_source_name(raw: str, *, article_url: str = "", homepage_url: str = "") -> str:
+    """Choose a publisher label without mistaking an aggregator for the source."""
+    for candidate, hint_url in (
+        (raw, ""),
+        ("", article_url),
+        ("", homepage_url),
+    ):
+        normalized = normalize_source_name(candidate, url=hint_url)
+        if normalized and not is_generic_source_name(normalized):
+            return normalized
+    return "Original Publisher"
 
 
 def source_homepage(source: str, url: str = "") -> str:
