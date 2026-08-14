@@ -1,0 +1,105 @@
+═══════════════════════════════════════════════════════
+  CICC 周报 Agent —— LLM 评分的原则
+═══════════════════════════════════════════════════════
+
+评分分两步：先用规则打基础分，再用 LLM 精细打分。
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  第一步：规则预打分（不用 LLM，纯关键词匹配）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+基础分从 2.0 开始，根据标题和摘要中的关键词加减分。
+
+【加分词】（每命中一个 +0.4 分）
+  China, Chinese, Beijing, Shanghai, Shenzhen, Hong Kong,
+  中国, 中资, 中方,
+  joint venture, JV, 合资,
+  MoU, memorandum of understanding, 谅解备忘录,
+  acquisition, acquired, acquires, 收购, 并购, merger,
+  investment, invests, 投资,
+  stake, 股权, raised, funding round, IPO, 上市,
+  deal, 交易, signs, signed, contract, 合同,
+  partnership, 合作
+
+【降分词】（每命中一个 -0.6 分）
+  GDP, inflation, CPI, 通胀, 通货膨胀,
+  central bank rate, 央行加息, 央行降息,
+  election, 选举, sanction, 制裁,
+  refinancing, 再融资, bond issuance, 发行债券,
+  tap bond, sukuk tap, 常规发债,
+  airstrike, 空袭, protest, 抗议
+
+【黑名单】（命中直接删除）
+  horoscope, football, 足球, 明星, 娱乐八卦
+
+匹配不区分大小写。基础分范围 0.0~5.0。
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  第二步：LLM 精细打分（点击"LLM 打分排序"后执行）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+使用 DeepSeek 模型，每 10 条一批，对每条新闻给出 0~5 分。
+
+【发给 LLM 的完整 Prompt】
+────────────────────────────────────────────
+
+  You are a news analyst for CICC's Weekly Global Markets News Digest.
+  Your job: score each news item by its relevance for a CICC weekly digest
+  targeted at internal deal / business development professionals focused on
+  Saudi Arabia, UAE, Kazakhstan, and Korea.
+
+  Scoring (0-5):
+    5 = Highly relevant: Company-level deal / M&A / JV / major investment / MoU,
+        especially China-related, aligns with CICC business development
+    4 = Relevant: deal or policy with clear business implication, industry-oriented
+    3 = Marginal: industry / partnership news, less critical
+    2 = Low: general corporate news
+    1 = Poor: routine bond issuance, refinancing, high-level macro / political
+    0 = Irrelevant: sports, lifestyle, celebrities, duplicates of trivial events
+
+  Rules:
+    - Prioritize China-related deals strongly
+    - Exclude macro data (GDP/CPI/inflation), routine debt issuance,
+      pure politics/elections, sanctions rhetoric, military, sports
+    - Reward specific transaction amounts, named companies, industry angle
+
+  Return STRICT JSON:
+  {"results":[{"id":<int>,"score":<0-5>,"reason":"<short reason>"}]}
+  No commentary outside JSON.
+
+────────────────────────────────────────────
+
+【评分标准详解】
+
+  5 分（高度相关）：
+    - 公司级别的并购/合资/重大投资/MoU
+    - 尤其是与中国相关的交易
+    - 与中金业务拓展方向高度吻合
+
+  4 分（相关）：
+    - 有明确商业含义的交易或政策
+    - 产业导向的重要新闻
+
+  3 分（边缘相关）：
+    - 产业/合作类新闻，但不够关键
+
+  2 分（低相关）：
+    - 一般性企业新闻
+
+  1 分（差）：
+    - 常规债券发行、再融资
+    - 高层面宏观/政治类新闻
+
+  0 分（无关）：
+    - 体育、娱乐、名人
+    - 琐碎事件的重复报道
+
+
+【技术参数】
+  - 模型：deepseek/deepseek-v3.2-exp（通过 OpenRouter 调用）
+  - 温度：0.1（极低，保证评分稳定一致）
+  - 批量大小：每次 10 条
+  - LLM 返回每条的分数和简短理由
+  - 最终分数 = 规则基础分的理由 + LLM 理由，一并展示在界面上

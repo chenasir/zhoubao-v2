@@ -1,0 +1,205 @@
+# Layered filtering strategy derived from "Filtering Strategy (watch list attached).docx".
+
+quotas:
+  KSA: {min: 4, max: 6}
+  UAE: {min: 4, max: 6}
+  KZ: {min: 4, max: 6}
+  KR: {min: 4, max: 6}
+
+hold_missing_terms_cap_ratio: 0.05
+topic_max_per_country: 2
+
+macro_terms:
+  - GDP
+  - CPI
+  - PMI
+  - inflation
+  - interest rate
+  - central bank rate
+  - unemployment
+  - trade balance
+  - current account
+  - 通胀
+  - 国内生产总值
+  - 采购经理
+  - 利率
+
+meeting_terms:
+  - visit
+  - visited
+  - meets
+  - met with
+  - meeting
+  - delegation
+  - tour
+  - speech
+  - forum speech
+  - 访问
+  - 会见
+  - 代表团
+  - 参访
+  - 讲话
+  - 致辞
+
+deal_terms:
+  - acquisition
+  - acquire
+  - merger
+  - M&A
+  - joint venture
+  - JV
+  - investment
+  - invest
+  - stake
+  - IPO
+  - secondary listing
+  - listing
+  - bond
+  - sukuk
+  - coupon
+  - tenor
+  - block trade
+  - lock-up
+  - SPA
+  - signing
+  - shortlist
+  - bid
+  - closing
+  - valuation
+  - 收购
+  - 并购
+  - 合资
+  - 投资
+  - 股权
+  - 上市
+  - 债券
+  - 票息
+  - 期限
+  - 估值
+
+project_terms:
+  - PPP
+  - BOOT
+  - EPC
+  - contract
+  - award
+  - concession
+  - factory
+  - plant
+  - infrastructure
+  - capacity
+  - COD
+  - financial close
+  - deployment
+  - GW
+  - GWh
+  - 合同
+  - 中标
+  - 特许经营
+  - 工厂
+  - 基建
+  - 产能
+  - 投产
+
+treaty_terms:
+  - treaty
+  - ratified
+  - signed agreement
+  - effective date
+  - memorandum of understanding
+  - MoU
+  - framework agreement
+  - 协定
+  - 批准
+  - 生效
+  - 谅解备忘录
+  - 框架协议
+
+next_milestone_terms:
+  - effective
+  - starts
+  - start date
+  - closing date
+  - financial close
+  - COD
+  - issuance
+  - delivery
+  - launch
+  - completion
+  - milestone
+  - 生效
+  - 启动
+  - 交割
+  - 发行
+  - 交付
+  - 投产
+  - 完工
+
+china_hk_terms:
+  - China
+  - Chinese
+  - PRC
+  - Hong Kong
+  - HK
+  - Beijing
+  - Shanghai
+  - Shenzhen
+  - RMB
+  - Panda bond
+  - Belt and Road
+  - BRI
+  - 中国
+  - 中资
+  - 中方
+  - 香港
+  - 人民币
+  - 熊猫债
+  - 一带一路
+
+country_anchors:
+  KSA:
+    - Saudi Arabia
+    - Saudi
+    - Riyadh
+    - PIF
+    - Public Investment Fund
+    - Aramco
+    - GACA
+    - NEOM
+    - Tadawul
+    - SAMA
+    - Capital Markets Authority
+  UAE:
+    - UAE
+    - United Arab Emirates
+    - Abu Dhabi
+    - Dubai
+    - ADX
+    - ADIA
+    - ADQ
+    - Mubadala
+    - Masdar
+    - DP World
+    - AD Ports
+    - Nasdaq Dubai
+  KZ:
+    - Kazakhstan
+    - Kazakh
+    - Astana
+    - Almaty
+    - Tokayev
+    - AIFC
+    - AIX
+    - KASE
+    - Samruk
+    - KazMunayGas
+  KR:
+    - South Korea
+    - Korea
+    - Korean
+    - Seoul
+    - KFTC
+    - KRX
+    - KOSDAQ
+    - Financial Services Commission
+    - Bank of Korea

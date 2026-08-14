@@ -1,0 +1,96 @@
+═══════════════════════════════════════════════════════
+  CICC 周报 Agent —— 新闻抓取的要求与原则
+═══════════════════════════════════════════════════════
+
+一、抓取范围
+────────────────────────────────────────────
+  覆盖 4 个国家/地区：
+    1. 沙特阿拉伯 (KSA)
+    2. 阿联酋 (UAE)
+    3. 哈萨克斯坦 (KZ)
+    4. 韩国 (KR)
+
+  未来可在 config/sources.yaml 中新增国家，无需改代码。
+
+
+二、信源类型
+────────────────────────────────────────────
+  1. RSS 直接订阅（type: rss）
+     - 新闻网站提供的标准 RSS/Atom 订阅地址
+     - 例如：Zawya Projects、Arab News Business、WAM English、KED Global 等
+     - 程序用 httpx 下载 XML，再用 feedparser 解析
+
+  2. Google News 搜索（type: google_news）
+     - 程序把搜索关键词拼成 Google News 的 RSS 地址
+     - 支持指定语言和地区（英文/中文、US/CN 等）
+     - 用于覆盖 Reuters、Bloomberg、Semafor 等不提供公开 RSS 的媒体
+     - 也用于中文新闻搜索（如"沙特 中国 投资"）
+
+
+三、搜索关键词标准（Google News 类型）
+────────────────────────────────────────────
+  核心方向：与"中国"相关的"交易/投资"类新闻
+
+  典型搜索词模式：
+    - Saudi Arabia China (deal OR investment OR MoU OR joint venture OR acquisition)
+    - site:reuters.com UAE China (deal OR investment OR MoU)
+    - site:bloomberg.com Kazakhstan China (deal OR investment OR railway OR logistics)
+    - 沙特 中国 (投资 OR 协议 OR 合资)
+    - 韩国 中国 (投资 OR 收购 OR 并购)
+
+  关键词覆盖的主题：
+    deal（交易）、investment（投资）、MoU（谅解备忘录）、
+    joint venture（合资）、acquisition（收购）、merger（并购）、
+    trade（贸易）、railway（铁路）、logistics（物流）、
+    private equity（私募股权）
+
+
+四、各国配置的信源数量
+────────────────────────────────────────────
+  沙特阿拉伯：9 个信源
+    - Zawya Projects (RSS)、Zawya Deals (RSS)、Arab News (RSS)
+    - Reuters 沙特 (Google News)、Bloomberg 沙特 (Google News)
+    - 通用搜索 (Google News × 2)、中文搜索 (Google News)
+
+  阿联酋：9 个信源
+    - WAM English (RSS)、The National (RSS)、AGBI (RSS)
+    - Reuters UAE (Google News)、Bloomberg UAE (Google News)
+    - Semafor Gulf (Google News)、通用搜索 (Google News × 2)、中文搜索
+
+  哈萨克斯坦：7 个信源
+    - Qazinform (RSS)、Times of Central Asia (RSS)
+    - Reuters 哈萨克 (Google News)、Bloomberg 哈萨克 (Google News)
+    - 通用搜索 (Google News × 2)、中文搜索
+
+  韩国：8 个信源
+    - KED Global (RSS)、Chosun Biz (RSS)、Korea JoongAng Daily (RSS)
+    - Reuters 韩国 (Google News)、Bloomberg 韩国 (Google News)
+    - 通用搜索 (Google News × 2)、中文搜索
+
+
+五、时间范围
+────────────────────────────────────────────
+  默认抓取最近 7 天的新闻（.env 中 LOOKBACK_DAYS=7）。
+  超过 7 天的文章在解析阶段被丢弃。
+  无日期的文章暂时保留，交由后续人工/LLM 判断。
+
+
+六、数量控制
+────────────────────────────────────────────
+  每个信源最多抓取 30 条（.env 中 MAX_PER_SOURCE=30）。
+  抓取后经过以下步骤压缩：
+    1. 黑名单过滤：含"football""horoscope""娱乐八卦"等词的直接删除
+    2. 标题去重：两条标题相似度 ≥ 88% 视为重复，只保留一条
+    3. 按国家压缩到 10~20 条：
+       - 优先每个信源至少保留 1 条（保证信源多样性）
+       - 再按相关性分数补满到上限
+  最终每个国家展示 10~20 条供人工筛选（目标选 4~6 条）。
+
+
+七、技术细节
+────────────────────────────────────────────
+  - HTTP 请求伪装了浏览器 User-Agent，避免被网站拦截
+  - 每个信源请求间隔 0.3 秒，防止请求过快被封
+  - 不使用任何付费 API（无 Bloomberg 终端、无付费 RSS）
+  - 不抓取微信公众号（无付费方案）
+  - 所有配置在 config/sources.yaml 和 .env 中，可灵活调整

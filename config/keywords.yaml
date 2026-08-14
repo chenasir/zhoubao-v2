@@ -1,0 +1,77 @@
+# 规则过滤使用的关键词。LLM 会在此基础上再打分排序。
+# 匹配不区分大小写。
+
+# 出现任一即优先保留（加分项）
+prioritize:
+  - China
+  - Chinese
+  - Beijing
+  - Shanghai
+  - Shenzhen
+  - Hong Kong
+  - 中国
+  - 中资
+  - 中方
+  - joint venture
+  - JV
+  - 合资
+  - MoU
+  - memorandum of understanding
+  - 谅解备忘录
+  - acquisition
+  - acquired
+  - acquires
+  - 收购
+  - 并购
+  - merger
+  - investment
+  - invests
+  - 投资
+  - stake
+  - 股权
+  - raised
+  - funding round
+  - IPO
+  - 上市
+  - deal
+  - 交易
+  - signs
+  - signed
+  - contract
+  - 合同
+  - partnership
+  - 合作
+
+# 出现即考虑过滤（降分项）—— Political/Economic/Refinancing/High level
+deprioritize:
+  - GDP
+  - inflation
+  - CPI
+  - 通胀
+  - 通货膨胀
+  - central bank rate
+  - 央行加息
+  - 央行降息
+  - election
+  - 选举
+  - sanction
+  - 制裁
+  - refinancing
+  - 再融资
+  - bond issuance
+  - 发行债券
+  - tap bond
+  - sukuk tap
+  - 常规发债
+  - airstrike
+  - 空袭
+  - protest
+  - 抗议
+
+# 命中以下词条的直接丢弃
+blacklist:
+  - horoscope
+  - football
+  - 足球
+  - 明星
+  - 娱乐八卦

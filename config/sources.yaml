@@ -1,0 +1,133 @@
+# V2 source registry.
+# tier 1 = official / exchange / regulator; tier 2 = authoritative media;
+# tier 3 = discovery / Chinese outbound media; category is shown in the UI.
+# Dead direct RSS endpoints from V1 were replaced with Google News site queries.
+
+countries:
+  - code: KSA
+    name_en: Saudi Arabia
+    name_zh: 沙特阿拉伯
+    sources:
+      - {name: Arab News, type: rss, url: "https://www.arabnews.com/rss.xml", tier: 2, category: media, max_items: 20}
+      - {name: Saudi Press Agency, type: google_news, query: "site:spa.gov.sa/en Saudi (China OR Chinese) (investment OR agreement OR project OR contract OR acquisition)", tier: 1, category: official, max_items: 15}
+      - {name: PIF News, type: google_news, query: "site:pif.gov.sa/en/news-and-insights Saudi (investment OR acquisition OR MoU OR joint venture OR fund)", tier: 1, category: sovereign_fund, max_items: 15}
+      - {name: Ministry of Investment, type: google_news, query: "site:misa.gov.sa Saudi investment (China OR agreement OR project OR partnership)", tier: 1, category: official, max_items: 12}
+      - {name: Saudi CMA, type: google_news, query: "site:cma.gov.sa/en/MediaCenter (approval OR offering OR acquisition OR merger OR foreign investor)", tier: 1, category: regulator, max_items: 12}
+      - {name: Saudi Exchange, type: google_news, query: "site:saudiexchange.sa (IPO OR listing OR acquisition OR merger OR agreement OR investment)", tier: 1, category: exchange, max_items: 12}
+      - {name: Saudi Aramco, type: google_news, query: "site:aramco.com Saudi Aramco (China OR acquisition OR investment OR joint venture OR contract)", tier: 1, category: company, max_items: 10}
+      - {name: ACWA Power, type: google_news, query: "site:acwapower.com Saudi (China OR project OR financial close OR agreement OR acquisition)", tier: 1, category: company, max_items: 10}
+      - {name: Zawya Saudi, type: google_news, query: "site:zawya.com/en Saudi (China OR investment OR acquisition OR project OR contract OR IPO)", tier: 2, category: media, max_items: 15}
+      - {name: Reuters Saudi, type: google_news, query: "site:reuters.com Saudi Arabia (China OR deal OR investment OR acquisition OR joint venture OR IPO)", tier: 2, category: media, max_items: 15}
+      - {name: Bloomberg Saudi, type: google_news, query: "site:bloomberg.com Saudi Arabia (China OR deal OR investment OR acquisition OR joint venture OR IPO)", tier: 2, category: media, max_items: 12}
+      - {name: MEED Saudi, type: google_news, query: "site:meed.com Saudi (project OR contract OR award OR financial close OR investment)", tier: 2, category: media, max_items: 12}
+      - {name: AGBI Saudi, type: google_news, query: "site:agbi.com Saudi (investment OR acquisition OR project OR contract OR China)", tier: 2, category: media, max_items: 12}
+      - {name: Economy Middle East Saudi, type: google_news, query: "site:economymiddleeast.com Saudi (investment OR acquisition OR project OR China)", tier: 2, category: media, max_items: 10}
+      - {name: The National Saudi, type: google_news, query: "site:thenationalnews.com Saudi (investment OR acquisition OR project OR China)", tier: 2, category: media, max_items: 10}
+      - {name: Chinese Embassy Saudi, type: google_news, query: "site:sa.china-embassy.gov.cn 沙特 (投资 OR 协议 OR 合作 OR 项目 OR 企业)", tier: 1, category: china_official, max_items: 10, hl: zh-CN, gl: CN, ceid: "CN:zh-Hans"}
+      - {name: MOFCOM Saudi, type: google_news, query: "site:sa.mofcom.gov.cn 沙特 (投资 OR 协议 OR 合作 OR 项目 OR 中资)", tier: 1, category: china_official, max_items: 10, hl: zh-CN, gl: CN, ceid: "CN:zh-Hans"}
+      - {name: 36Kr Chuhai Saudi, type: google_news, query: "site:36kr.com/user/11918142 沙特 中国 出海 (投资 OR 合作 OR 收购 OR 项目)", tier: 3, category: china_media, max_items: 10, hl: zh-CN, gl: CN, ceid: "CN:zh-Hans"}
+      - {name: Letschuhai Saudi, type: google_news, query: "site:letschuhai.com 沙特 中国 出海 (投资 OR 合作 OR 收购 OR 项目)", tier: 3, category: china_media, max_items: 10, hl: zh-CN, gl: CN, ceid: "CN:zh-Hans"}
+      - {name: Saudi China broad, type: google_news, query: "Saudi Arabia China (investment OR acquisition OR contract OR joint venture OR MoU OR project)", tier: 3, category: discovery, max_items: 20}
+      - name: Watchlist Search Saudi
+        type: watchlist_search
+        tier: 2
+        category: watchlist
+        limit: 72
+        group_size: 4
+        max_items: 8
+        terms: "(deal OR investment OR acquisition OR project OR IPO OR stake OR contract OR MoU OR China)"
+
+  - code: UAE
+    name_en: United Arab Emirates
+    name_zh: 阿联酋
+    sources:
+      - {name: AGBI, type: rss, url: "https://www.agbi.com/feed/", tier: 2, category: media, max_items: 20}
+      - {name: WAM via Google News, type: google_news, query: "site:wam.ae UAE (China OR investment OR acquisition OR agreement OR project OR contract)", tier: 1, category: official, max_items: 15}
+      - {name: Dubai Media Office, type: google_news, query: "site:mediaoffice.ae Dubai (China OR investment OR acquisition OR agreement OR project)", tier: 1, category: official, max_items: 15}
+      - {name: Abu Dhabi Media Office, type: google_news, query: "site:mediaoffice.abudhabi Abu Dhabi (China OR investment OR agreement OR project OR partnership)", tier: 1, category: official, max_items: 15}
+      - {name: ADQ Newsroom, type: google_news, query: "site:adq.ae (investment OR acquisition OR agreement OR fund OR joint venture)", tier: 1, category: sovereign_fund, max_items: 12}
+      - {name: Mubadala News, type: google_news, query: "site:mubadala.com (investment OR acquisition OR agreement OR fund OR joint venture)", tier: 1, category: sovereign_fund, max_items: 12}
+      - {name: ADX News, type: google_news, query: "site:adx.ae (IPO OR listing OR acquisition OR merger OR agreement OR China)", tier: 1, category: exchange, max_items: 12}
+      - {name: DFM News, type: google_news, query: "site:dfm.ae (IPO OR listing OR acquisition OR merger OR agreement OR China)", tier: 1, category: exchange, max_items: 12}
+      - {name: DIFC News, type: google_news, query: "site:difc.com (China OR investment OR fund OR acquisition OR agreement)", tier: 1, category: financial_centre, max_items: 12}
+      - {name: ADGM News, type: google_news, query: "site:adgm.com (China OR investment OR fund OR acquisition OR agreement)", tier: 1, category: financial_centre, max_items: 12}
+      - {name: DP World News, type: google_news, query: "site:dpworld.com UAE (China OR investment OR acquisition OR project OR contract)", tier: 1, category: company, max_items: 10}
+      - {name: AD Ports News, type: google_news, query: "site:adportsgroup.com (China OR investment OR acquisition OR project OR contract)", tier: 1, category: company, max_items: 10}
+      - {name: Zawya UAE, type: google_news, query: "site:zawya.com/en UAE (China OR investment OR acquisition OR project OR contract OR IPO)", tier: 2, category: media, max_items: 15}
+      - {name: Reuters UAE, type: google_news, query: "site:reuters.com UAE (China OR deal OR investment OR acquisition OR joint venture OR IPO)", tier: 2, category: media, max_items: 15}
+      - {name: Bloomberg UAE, type: google_news, query: "site:bloomberg.com UAE (China OR deal OR investment OR acquisition OR joint venture OR IPO)", tier: 2, category: media, max_items: 12}
+      - {name: The National UAE, type: google_news, query: "site:thenationalnews.com UAE (investment OR acquisition OR project OR China)", tier: 2, category: media, max_items: 12}
+      - {name: MEED UAE, type: google_news, query: "site:meed.com UAE (project OR contract OR award OR financial close OR investment)", tier: 2, category: media, max_items: 12}
+      - {name: Chinese Embassy UAE, type: google_news, query: "site:ae.china-embassy.gov.cn 阿联酋 (投资 OR 协议 OR 合作 OR 项目 OR 企业)", tier: 1, category: china_official, max_items: 10, hl: zh-CN, gl: CN, ceid: "CN:zh-Hans"}
+      - {name: 36Kr Chuhai UAE, type: google_news, query: "site:36kr.com/user/11918142 阿联酋 中国 出海 (投资 OR 合作 OR 收购 OR 项目)", tier: 3, category: china_media, max_items: 10, hl: zh-CN, gl: CN, ceid: "CN:zh-Hans"}
+      - {name: UAE China broad, type: google_news, query: "(UAE OR Dubai OR Abu Dhabi) China (investment OR acquisition OR contract OR joint venture OR MoU OR project)", tier: 3, category: discovery, max_items: 20}
+      - name: Watchlist Search UAE
+        type: watchlist_search
+        tier: 2
+        category: watchlist
+        limit: 72
+        group_size: 4
+        max_items: 8
+        terms: "(deal OR investment OR acquisition OR project OR IPO OR stake OR contract OR MoU OR China)"
+
+  - code: KZ
+    name_en: Kazakhstan
+    name_zh: 哈萨克斯坦
+    sources:
+      - {name: Qazinform via Google News, type: google_news, query: "site:qazinform.com Kazakhstan (China OR investment OR agreement OR project OR acquisition)", tier: 1, category: official_media, max_items: 15}
+      - {name: AIFC News, type: google_news, query: "site:aifc.kz (China OR investment OR agreement OR listing OR bond OR fund)", tier: 1, category: financial_centre, max_items: 15}
+      - {name: AIX News, type: google_news, query: "site:aixkz.com (China OR investment OR agreement OR listing OR bond OR IPO)", tier: 1, category: exchange, max_items: 12}
+      - {name: KASE News, type: google_news, query: "site:kase.kz/en (China OR Chinese OR investment OR acquisition OR listing OR bond OR offering)", tier: 1, category: exchange, max_items: 15}
+      - {name: Kazakh Invest, type: google_news, query: "site:kazakhinvest.com Kazakhstan (China OR investment OR agreement OR project OR plant)", tier: 1, category: investment_agency, max_items: 15}
+      - {name: Kazakhstan Government, type: google_news, query: "site:gov.kz Kazakhstan China (investment OR agreement OR project OR contract OR trade corridor)", tier: 1, category: official, max_items: 12}
+      - {name: Akorda, type: google_news, query: "site:akorda.kz/en Kazakhstan China (agreement OR investment OR project OR cooperation)", tier: 1, category: official, max_items: 10}
+      - {name: Samruk Kazyna, type: google_news, query: "site:samruk.kz (China OR Chinese OR investment OR agreement OR acquisition OR project)", tier: 1, category: sovereign_fund, max_items: 12}
+      - {name: KazMunayGas, type: google_news, query: "site:kmg.kz (China OR Chinese OR investment OR agreement OR acquisition OR project)", tier: 1, category: company, max_items: 10}
+      - {name: Astana Times, type: google_news, query: "site:astanatimes.com Kazakhstan China (investment OR agreement OR project OR trade)", tier: 2, category: media, max_items: 15}
+      - {name: Times of Central Asia, type: google_news, query: "site:timesca.com Kazakhstan China (investment OR agreement OR project OR acquisition)", tier: 2, category: media, max_items: 12}
+      - {name: Interfax Kazakhstan, type: google_news, query: "site:interfax.com Kazakhstan China (investment OR agreement OR project OR acquisition)", tier: 2, category: media, max_items: 12}
+      - {name: Trend Kazakhstan, type: google_news, query: "site:trend.az Kazakhstan China (investment OR agreement OR project OR corridor)", tier: 2, category: media, max_items: 12}
+      - {name: Reuters Kazakhstan, type: google_news, query: "site:reuters.com Kazakhstan China (investment OR acquisition OR railway OR logistics OR trade OR deal)", tier: 2, category: media, max_items: 15}
+      - {name: Bloomberg Kazakhstan, type: google_news, query: "site:bloomberg.com Kazakhstan China (investment OR acquisition OR railway OR logistics OR trade OR deal)", tier: 2, category: media, max_items: 12}
+      - {name: Chinese Embassy Kazakhstan, type: google_news, query: "site:kz.china-embassy.gov.cn 哈萨克斯坦 (投资 OR 协议 OR 合作 OR 项目 OR 企业)", tier: 1, category: china_official, max_items: 10, hl: zh-CN, gl: CN, ceid: "CN:zh-Hans"}
+      - {name: Kazakhstan China broad, type: google_news, query: "Kazakhstan China (investment OR acquisition OR contract OR joint venture OR MoU OR railway OR logistics)", tier: 3, category: discovery, max_items: 20}
+      - name: Watchlist Search Kazakhstan
+        type: watchlist_search
+        tier: 2
+        category: watchlist
+        limit: 100
+        group_size: 4
+        max_items: 8
+        terms: "(deal OR investment OR acquisition OR project OR IPO OR bond OR MoU OR China)"
+
+  - code: KR
+    name_en: South Korea
+    name_zh: 韩国
+    sources:
+      - {name: KED Global, type: rss, url: "https://www.kedglobal.com/rss/all.xml", tier: 2, category: media, max_items: 20}
+      - {name: Korea FSC, type: google_news, query: "site:fsc.go.kr/eng Korea (merger OR acquisition OR IPO OR investment OR capital market OR foreign)", tier: 1, category: regulator, max_items: 15}
+      - {name: Korea Exchange, type: google_news, query: "site:global.krx.co.kr Korea (listing OR IPO OR merger OR acquisition OR China)", tier: 1, category: exchange, max_items: 12}
+      - {name: Invest Korea, type: google_news, query: "site:investkorea.org Korea (investment OR acquisition OR project OR China OR foreign company)", tier: 1, category: investment_agency, max_items: 15}
+      - {name: MOTIR Korea, type: google_news, query: "site:english.motir.go.kr Korea (investment OR acquisition OR agreement OR China OR project)", tier: 1, category: official, max_items: 12}
+      - {name: KFTC Korea, type: google_news, query: "site:ftc.go.kr/eng Korea (merger OR acquisition OR business combination OR approval)", tier: 1, category: regulator, max_items: 10}
+      - {name: Chosun Biz, type: google_news, query: "site:biz.chosun.com/en Korea (investment OR acquisition OR merger OR IPO OR China)", tier: 2, category: media, max_items: 15}
+      - {name: Korea JoongAng Daily, type: google_news, query: "site:koreajoongangdaily.joins.com Korea (investment OR acquisition OR merger OR IPO OR China)", tier: 2, category: media, max_items: 15}
+      - {name: Pulse, type: google_news, query: "site:pulse.mk.co.kr Korea (investment OR acquisition OR merger OR IPO OR China)", tier: 2, category: media, max_items: 15}
+      - {name: Business Korea, type: google_news, query: "site:businesskorea.co.kr Korea (investment OR acquisition OR merger OR IPO OR China)", tier: 2, category: media, max_items: 12}
+      - {name: Seoul Economic Daily, type: google_news, query: "site:en.sedaily.com Korea (investment OR acquisition OR merger OR IPO OR China)", tier: 2, category: media, max_items: 12}
+      - {name: Korea Herald, type: google_news, query: "site:koreaherald.com Korea (investment OR acquisition OR merger OR IPO OR China)", tier: 2, category: media, max_items: 12}
+      - {name: Yonhap English, type: google_news, query: "site:en.yna.co.kr Korea (investment OR acquisition OR merger OR IPO OR China)", tier: 2, category: media, max_items: 12}
+      - {name: Reuters Korea, type: google_news, query: "site:reuters.com South Korea China (deal OR investment OR acquisition OR merger OR IPO)", tier: 2, category: media, max_items: 15}
+      - {name: Bloomberg Korea, type: google_news, query: "site:bloomberg.com South Korea China (deal OR investment OR acquisition OR merger OR IPO)", tier: 2, category: media, max_items: 12}
+      - {name: JoongAng Chinese, type: google_news, query: "site:chinese.joins.com 韩国 中国 (投资 OR 收购 OR 并购 OR 上市 OR 合作)", tier: 2, category: china_media, max_items: 12, hl: zh-CN, gl: CN, ceid: "CN:zh-Hans"}
+      - {name: Chinese Embassy Korea, type: google_news, query: "site:kr.china-embassy.gov.cn 韩国 (投资 OR 协议 OR 合作 OR 项目 OR 企业)", tier: 1, category: china_official, max_items: 10, hl: zh-CN, gl: CN, ceid: "CN:zh-Hans"}
+      - {name: Korea China broad, type: google_news, query: "South Korea China (investment OR acquisition OR merger OR joint venture OR IPO OR stake)", tier: 3, category: discovery, max_items: 20}
+      - {name: Korea private equity, type: google_news, query: "South Korea private equity (acquisition OR sale OR stake OR buyout)", tier: 3, category: discovery, max_items: 15}
+      - name: Watchlist Search Korea
+        type: watchlist_search
+        tier: 2
+        category: watchlist
+        limit: 120
+        group_size: 4
+        max_items: 8
+        terms: "(deal OR investment OR acquisition OR merger OR IPO OR stake OR China)"

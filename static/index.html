@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CICC 周报 Agent V2</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --brand: #17345f;
+      --brand-2: #23508c;
+      --ink: #142033;
+      --muted: #64748b;
+      --panel: rgba(255, 255, 255, 0.9);
+    }
+    body {
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, rgba(10, 23, 43, 0.05), transparent 18rem),
+        radial-gradient(circle at 15% -8%, rgba(35, 80, 140, 0.28), transparent 30rem),
+        radial-gradient(circle at 88% 3%, rgba(20, 184, 166, 0.16), transparent 24rem),
+        linear-gradient(135deg, #f7f9fc 0%, #eef3f8 42%, #f8fafc 100%);
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,0.82), transparent 72%);
+    }
+    body::after {
+      content: "";
+      position: fixed;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 148px;
+      pointer-events: none;
+      background: linear-gradient(135deg, rgba(23, 52, 95, 0.12), rgba(20, 184, 166, 0.03));
+    }
+    .loader { border-top-color: var(--brand); animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .glass {
+      background: rgba(255,255,255,0.86);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 22px 60px rgba(15, 23, 42, 0.10);
+    }
+    .surface {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0.78));
+      border: 1px solid rgba(255,255,255,0.82);
+      box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
+    }
+    .surface-amber {
+      background:
+        radial-gradient(circle at 5% 0%, rgba(245, 158, 11, 0.14), transparent 16rem),
+        linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,251,235,0.78));
+      border: 1px solid rgba(253, 230, 138, 0.72);
+    }
+    .surface-blue {
+      background:
+        radial-gradient(circle at 8% 0%, rgba(59, 130, 246, 0.13), transparent 18rem),
+        linear-gradient(180deg, rgba(255,255,255,0.94), rgba(239,246,255,0.78));
+      border: 1px solid rgba(191, 219, 254, 0.72);
+    }
+    .surface-violet {
+      background:
+        radial-gradient(circle at 8% 0%, rgba(124, 58, 237, 0.07), transparent 16rem),
+        linear-gradient(180deg, rgba(255,255,255,0.94), rgba(245,243,255,0.72));
+      border: 1px solid rgba(221, 214, 254, 0.64);
+    }
+    .surface-teal {
+      background:
+        radial-gradient(circle at 8% 0%, rgba(20, 184, 166, 0.09), transparent 18rem),
+        linear-gradient(180deg, rgba(255,255,255,0.94), rgba(240,253,250,0.74));
+      border: 1px solid rgba(153, 246, 228, 0.62);
+    }
+    .hero-shell {
+      background:
+        linear-gradient(135deg, rgba(23,52,95,0.97), rgba(35,80,140,0.94)),
+        radial-gradient(circle at 82% 18%, rgba(20,184,166,0.34), transparent 22rem);
+      box-shadow: 0 24px 70px rgba(15,23,42,0.20);
+    }
+    .action-btn { transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease; }
+    .action-btn:hover { transform: translateY(-1px); }
+    .news-card {
+      transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+    }
+    .news-card:hover { transform: translateY(-1px); box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08); }
+    .news-card.selected {
+      background: linear-gradient(135deg, rgba(239,246,255,0.96), rgba(240,253,250,0.84));
+      border-color: #3b82f6;
+      box-shadow: 0 10px 28px rgba(37, 99, 235, 0.12);
+    }
+    .field {
+      border: 1px solid #dbe3ef;
+      border-radius: 0.85rem;
+      background: rgba(255,255,255,0.88);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.75);
+    }
+    .field:focus {
+      outline: none;
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 4px rgba(96,165,250,0.18);
+    }
+    details.clean-details > summary {
+      list-style: none;
+    }
+    details.clean-details > summary::-webkit-details-marker {
+      display: none;
+    }
+    details.clean-details > summary::after {
+      content: "展开";
+      font-size: 11px;
+      color: #64748b;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 999px;
+      padding: 3px 9px;
+      background: rgba(255,255,255,0.72);
+    }
+    details.clean-details[open] > summary::after {
+      content: "收起";
+    }
+    body.busy-mode > :not(#busyOverlay) { pointer-events: none; user-select: none; }
+    body.busy-mode { overflow: hidden; }
+  </style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<header class="relative z-20 border-b border-white/60 bg-white/72 backdrop-blur-xl">
+  <div class="max-w-7xl mx-auto px-6 pt-6">
+    <div class="hero-shell rounded-[2rem] px-7 py-6 text-white">
+      <div class="flex items-center justify-between gap-6">
+    <div>
+      <div class="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/15 text-blue-50 px-3 py-1 text-[11px] font-medium mb-2">
+        Global Markets News Digest
+      </div>
+      <h1 class="text-3xl font-bold tracking-tight">CICC 周报 Agent V2</h1>
+      <p class="text-sm text-blue-100/85 mt-2">自动抓取 · 四层筛选 · LLM 格式化 · 中英双语 docx</p>
+    </div>
+    <div class="hidden md:flex items-end gap-3 rounded-2xl bg-white/10 border border-white/15 px-4 py-3 shadow-sm">
+      <label class="text-xs text-blue-100/85">
+        <span class="block mb-1">期号</span>
+        <input id="issueNumber" type="number" value="137" class="field w-20 px-3 py-2 text-sm text-slate-800" />
+      </label>
+      <label class="text-xs text-blue-100/85">
+        <span class="block mb-1">起始日</span>
+        <input id="startDate" type="date" class="field px-3 py-2 text-sm text-slate-800" />
+      </label>
+      <label class="text-xs text-blue-100/85">
+        <span class="block mb-1">结束日</span>
+        <input id="endDate" type="date" class="field px-3 py-2 text-sm text-slate-800" />
+      </label>
+      </div>
+    </div>
+
+    <!-- Primary workflow -->
+    <div class="mt-6 flex flex-wrap items-center gap-3">
+      <button id="btnFetch" class="action-btn px-5 py-3 bg-white text-[#17345f] text-sm font-semibold rounded-2xl shadow-lg shadow-blue-950/20 hover:opacity-95">① 抓取并筛选新闻</button>
+      <button id="btnGenerate" class="action-btn px-5 py-3 bg-emerald-500 text-white text-sm font-semibold rounded-2xl shadow-lg shadow-emerald-950/20 hover:opacity-95">② 生成双语 docx</button>
+    </div>
+    </div>
+  </div>
+</header>
+
+<!-- Sources modal -->
+<div id="sourcesModal" class="fixed inset-0 bg-black/50 z-30 hidden items-start justify-center overflow-y-auto py-10">
+  <div class="bg-white rounded-lg shadow-xl w-[720px] max-w-[95%] p-6">
+    <div class="flex items-start justify-between mb-3">
+      <div>
+        <h3 class="text-lg font-semibold text-[#1f3a6e]">新闻信源总览</h3>
+        <p class="text-xs text-slate-500">当「抓取近 7 天新闻」时，会遍历以下全部信源（配置在 <code>config/sources.yaml</code>）</p>
+      </div>
+      <button onclick="document.getElementById('sourcesModal').classList.add('hidden')" class="px-2 py-1 bg-slate-200 text-sm rounded">✕</button>
+    </div>
+    <div id="sourcesBody" class="space-y-4 max-h-[70vh] overflow-y-auto pr-2"></div>
+  </div>
+</div>
+
+<!-- Related sources modal -->
+<div id="relatedModal" class="fixed inset-0 bg-black/50 z-30 hidden items-center justify-center px-4">
+  <div class="bg-white rounded-2xl shadow-xl w-[720px] max-w-[95%] p-6">
+    <div class="flex items-start justify-between mb-4">
+      <div>
+        <h3 class="text-lg font-semibold text-[#1f3a6e]">其他 Source</h3>
+        <p class="text-xs text-slate-500">系统会按同一标题检索其他报道来源，优先展示 Reuters、Bloomberg 等权威来源。</p>
+      </div>
+      <button onclick="document.getElementById('relatedModal').classList.add('hidden')" class="px-2 py-1 bg-slate-200 text-sm rounded">✕</button>
+    </div>
+    <div id="relatedBody" class="space-y-3 max-h-[70vh] overflow-y-auto"></div>
+  </div>
+</div>
+
+<!-- Tiny legend explaining the score -->
+<section class="max-w-7xl mx-auto px-6 pt-6">
+  <details class="clean-details surface surface-amber text-amber-900 text-xs rounded-2xl px-4 py-3">
+    <summary class="cursor-pointer flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3 flex-wrap">
+        <span class="font-semibold">分数说明</span>
+        <span class="text-amber-700/75">规则分用于快速排序；AI 分仅在点击「② LLM 打分排序」后出现。</span>
+      </div>
+    </summary>
+    <div class="mt-3 flex items-center gap-3 flex-wrap border-t border-amber-200/50 pt-3">
+      <span class="inline-flex items-center gap-1">
+        <span class="font-mono bg-slate-200 rounded px-1.5 py-0.5">3.2<span class="ml-1 text-[9px] px-1 rounded bg-slate-400 text-white">规则</span></span>
+        <span>抓取后立即计算的四层筛选排序分</span>
+      </span>
+      <span class="text-amber-400">→</span>
+      <span class="inline-flex items-center gap-1">
+        <span class="font-mono bg-emerald-100 rounded px-1.5 py-0.5">4.5<span class="ml-1 text-[9px] px-1 rounded bg-emerald-600 text-white">AI</span></span>
+        <span>AI 辅助复核分，主要用于人工排序参考</span>
+      </span>
+    </div>
+  </details>
+</section>
+
+<!-- Runtime config -->
+<section class="max-w-7xl mx-auto px-6 pt-4">
+  <details class="clean-details surface surface-blue rounded-3xl p-5">
+    <summary class="cursor-pointer flex items-start justify-between gap-4 flex-wrap">
+      <div>
+        <h2 class="text-base font-semibold text-[#17345f]">运行配置</h2>
+        <p class="text-xs text-slate-500 mt-1">当前模型与 OpenRouter 设置。一般部署后无需频繁修改。</p>
+      </div>
+      <span class="text-[11px] text-blue-700 bg-blue-50/90 border border-blue-200 rounded-full px-3 py-1.5">模型和 API 设置</span>
+    </summary>
+    <div class="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-3">
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">内部访问口令</label>
+        <input id="appAccessToken" type="password" placeholder="部署时设置的 APP_ACCESS_TOKEN" class="field w-full px-3 py-2.5 text-sm" />
+      </div>
+      <div class="lg:col-span-2">
+        <label class="block text-xs text-slate-500 mb-1">OpenRouter API key</label>
+        <input id="openrouterApiKey" type="password" placeholder="sk-or-v1-..." class="field w-full px-3 py-2.5 text-sm" />
+      </div>
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">模型预设</label>
+        <select id="llmModelPreset" class="field w-full px-3 py-2.5 text-sm">
+          <option value="deepseek/deepseek-v4-pro">deepseek/deepseek-v4-pro（默认推荐）</option>
+          <option value="deepseek/deepseek-v3.2-exp">deepseek/deepseek-v3.2-exp</option>
+          <option value="z-ai/glm-4.5-air">z-ai/glm-4.5-air（中文更强，略贵）</option>
+          <option value="deepseek/deepseek-chat-v3-0324">deepseek/deepseek-chat-v3-0324</option>
+          <option value="custom">自定义</option>
+        </select>
+      </div>
+      <div class="lg:col-span-2">
+        <label class="block text-xs text-slate-500 mb-1">自定义模型名（OpenRouter 格式）</label>
+        <input id="llmModelCustom" placeholder="例如 deepseek/deepseek-v4-pro" class="field w-full px-3 py-2.5 text-sm" />
+      </div>
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">接口地址</label>
+        <input id="openrouterBaseUrl" value="https://openrouter.ai/api/v1" class="field w-full px-3 py-2.5 text-sm bg-slate-50" />
+      </div>
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">LLM 并发数</label>
+        <input id="llmConcurrency" type="number" min="1" max="8" value="3" class="field w-full px-3 py-2.5 text-sm" />
+        <p class="mt-1 text-[11px] text-slate-400">打分与生成 doc 同时处理的条数，建议 2-4</p>
+      </div>
+    </div>
+    <p class="mt-3 text-[11px] text-amber-700 bg-amber-50/75 border border-amber-200/80 rounded-2xl px-3 py-2">公网部署时请在 Vercel 设置 APP_ACCESS_TOKEN。访问口令和页面填写的 API key 仅保存在当前浏览器。</p>
+  </details>
+</section>
+
+<!-- Manual URL adder -->
+<section class="max-w-7xl mx-auto px-6 py-4">
+  <details class="surface surface-violet rounded-2xl p-4">
+    <summary class="cursor-pointer text-sm font-semibold text-slate-700">
+      手动添加一条新闻（公众号 / Bloomberg 付费文章 / 其他漏抓的来源）
+    </summary>
+    <div class="mt-3 flex flex-wrap gap-2 items-end">
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">国家</label>
+        <select id="manualCountry" class="field px-3 py-2 text-sm"></select>
+      </div>
+      <div class="flex-1 min-w-[300px]">
+        <label class="block text-xs text-slate-500 mb-1">URL</label>
+        <input id="manualUrl" placeholder="https://..." class="field w-full px-3 py-2 text-sm" />
+      </div>
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">来源标签</label>
+        <input id="manualSource" value="公众号" class="field px-3 py-2 text-sm" />
+      </div>
+      <button id="btnManualAdd" class="action-btn px-4 py-2 bg-slate-800 text-white text-sm rounded-xl hover:opacity-95">添加</button>
+    </div>
+  </details>
+</section>
+
+<!-- Main candidate list -->
+<main class="max-w-7xl mx-auto px-6 pb-12">
+  <section class="surface surface-teal rounded-3xl p-4 mb-5">
+    <div class="flex items-center justify-between gap-4 flex-wrap">
+      <div>
+        <h2 class="text-sm font-semibold text-[#17345f]">候选新闻工作台</h2>
+        <p class="text-xs text-slate-500 mt-1">管理抓取结果、信源信息和国家分组展开状态。</p>
+        <div class="mt-2 flex items-center gap-2 text-xs text-slate-500">
+          <div id="spinner" class="hidden w-4 h-4 border-2 border-slate-200 rounded-full loader"></div>
+          <span id="statusBar" class="min-h-[1rem]"></span>
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <button id="btnScore" class="action-btn px-4 py-2.5 bg-slate-800 text-white text-sm rounded-xl hover:opacity-95">AI 复核评分</button>
+        <div class="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1">
+          <button data-status-filter="all" class="status-filter px-3 py-1.5 text-xs rounded-lg bg-[#17345f] text-white">全部</button>
+          <button data-status-filter="final" class="status-filter px-3 py-1.5 text-xs rounded-lg text-slate-600 hover:bg-slate-50">FINAL</button>
+          <button data-status-filter="reserve" class="status-filter px-3 py-1.5 text-xs rounded-lg text-slate-600 hover:bg-slate-50">RESERVE</button>
+          <button data-status-filter="hold" class="status-filter px-3 py-1.5 text-xs rounded-lg text-slate-600 hover:bg-slate-50">HOLD</button>
+          <button data-status-filter="manual" class="status-filter px-3 py-1.5 text-xs rounded-lg text-slate-600 hover:bg-slate-50">手动</button>
+        </div>
+        <button id="btnClear" class="action-btn px-4 py-2.5 bg-white border border-slate-200 text-slate-600 text-sm rounded-xl hover:bg-slate-50">清空候选</button>
+        <button id="btnSources" class="action-btn px-4 py-2.5 bg-white border border-slate-200 text-slate-600 text-sm rounded-xl hover:bg-slate-50">查看所有信源</button>
+        <button id="btnExpandAll" class="action-btn px-4 py-2.5 bg-white border border-slate-200 text-slate-600 text-sm rounded-xl hover:bg-slate-50">全部展开</button>
+        <button id="btnCollapseAll" class="action-btn px-4 py-2.5 bg-white border border-slate-200 text-slate-600 text-sm rounded-xl hover:bg-slate-50">全部收起</button>
+      </div>
+    </div>
+  </section>
+  <div id="countryPanels" class="space-y-6"></div>
+  <div id="emptyHint" class="text-center py-24 hidden">
+    <div class="mx-auto w-16 h-16 rounded-3xl bg-white border border-white/80 shadow-sm flex items-center justify-center text-2xl text-[#17345f] mb-4">N</div>
+    <div class="text-lg font-semibold text-slate-700">暂无候选新闻</div>
+    <div class="text-sm text-slate-400 mt-2">请先点击「① 抓取近 7 天新闻」，系统会自动筛选并生成候选清单。</div>
+  </div>
+</main>
+
+<!-- Result modal -->
+<div id="resultModal" class="fixed inset-0 bg-black/50 z-[60] hidden items-center justify-center">
+  <div class="bg-white rounded-lg shadow-xl w-[480px] p-6">
+    <h3 class="text-lg font-semibold mb-3 text-[#1f3a6e]">周报已生成</h3>
+    <p class="text-sm text-slate-600 mb-4">点击下方按钮下载打包好的中英文 docx：</p>
+    <div id="downloadLinks" class="space-y-2"></div>
+    <div class="text-right mt-5">
+      <button onclick="document.getElementById('resultModal').classList.add('hidden')" class="px-3 py-1.5 bg-slate-200 text-sm rounded">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- Busy overlay -->
+<div id="busyOverlay" class="fixed inset-0 bg-black/45 z-40 hidden items-center justify-center px-4">
+  <div class="w-[520px] max-w-full bg-white rounded-xl shadow-2xl p-6">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-9 h-9 border-4 border-slate-200 rounded-full loader flex-none"></div>
+      <div>
+        <h3 id="busyTitle" class="text-lg font-semibold text-[#1f3a6e]">处理中</h3>
+        <p id="busyText" class="text-sm text-slate-500">请稍候，当前操作进行中。</p>
+      </div>
+    </div>
+    <div class="w-full h-3 rounded-full bg-slate-100 overflow-hidden">
+      <div id="busyBar" class="h-full bg-[#1f3a6e] transition-all duration-500 ease-out" style="width: 0%"></div>
+    </div>
+    <div class="mt-2 flex items-center justify-between text-xs text-slate-500">
+      <span id="busyStage">准备开始…</span>
+      <span id="busyPercent">0%</span>
+    </div>
+    <p class="mt-4 text-xs text-slate-400">处理中时，其他按钮会暂时锁定，避免重复触发。</p>
+  </div>
+</div>
+
+<script src="/static/app.js?v=20260701-docfix2"></script>
+</body>
+</html>
