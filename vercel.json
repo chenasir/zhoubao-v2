@@ -6,19 +6,5 @@
       "maxDuration": 300
     }
   },
-  "regions": ["sin1"],
-  "rewrites": [
-    {
-      "source": "/static/:path*",
-      "destination": "/api/index"
-    },
-    {
-      "source": "/api/:path*",
-      "destination": "/api/index"
-    },
-    {
-      "source": "/:path*",
-      "destination": "/api/index"
-    }
-  ]
+  "regions": ["sin1"]
 }
