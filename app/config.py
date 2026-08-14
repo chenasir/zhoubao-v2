@@ -19,20 +19,31 @@ TEMPLATES_DIR = ROOT / "templates"
 load_dotenv(ROOT / ".env")
 
 
+def _env_int(name: str, default: int) -> int:
+    """Read an integer env var while treating blank/invalid values as unset."""
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
 class Settings:
     openrouter_api_key: str = os.getenv("OPENROUTER_API_KEY", "")
     openrouter_base_url: str = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
     llm_model: str = os.getenv("LLM_MODEL", "deepseek/deepseek-v4-pro")
-    llm_timeout: int = int(os.getenv("LLM_TIMEOUT", "90"))
-    llm_concurrency: int = max(1, int(os.getenv("LLM_CONCURRENCY", "3")))
-    fetch_concurrency: int = max(1, min(12, int(os.getenv("FETCH_CONCURRENCY", "8"))))
+    llm_timeout: int = _env_int("LLM_TIMEOUT", 90)
+    llm_concurrency: int = max(1, _env_int("LLM_CONCURRENCY", 3))
+    fetch_concurrency: int = max(1, min(12, _env_int("FETCH_CONCURRENCY", 8)))
     app_access_token: str = os.getenv("APP_ACCESS_TOKEN", "").strip()
 
     host: str = os.getenv("HOST", "127.0.0.1")
-    port: int = int(os.getenv("PORT", "8765"))
+    port: int = _env_int("PORT", 8765)
 
-    max_per_source: int = int(os.getenv("MAX_PER_SOURCE", "30"))
-    lookback_days: int = int(os.getenv("LOOKBACK_DAYS", "7"))
+    max_per_source: int = _env_int("MAX_PER_SOURCE", 30)
+    lookback_days: int = _env_int("LOOKBACK_DAYS", 7)
 
     db_path: Path = DATA_DIR / "zhoubao.sqlite3"
 

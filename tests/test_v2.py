@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from app.config import load_sources, settings
+from app.config import _env_int, load_sources, settings
 from app.main import app
 from app.models import FormattedItem
 from app.retriever import _validate_public_url, _watchlist_queries
@@ -49,6 +49,10 @@ class SourceRegistryTests(unittest.TestCase):
 
 
 class SecurityTests(unittest.TestCase):
+    def test_blank_integer_env_uses_default(self):
+        with patch.dict("os.environ", {"TEST_BLANK_INTEGER": ""}):
+            self.assertEqual(_env_int("TEST_BLANK_INTEGER", 90), 90)
+
     def test_private_urls_are_rejected(self):
         for url in ["http://127.0.0.1/x", "http://10.0.0.1/x", "http://[::1]/x", "file:///etc/passwd"]:
             with self.subTest(url=url), self.assertRaises(ValueError):
