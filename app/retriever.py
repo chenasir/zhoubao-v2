@@ -327,8 +327,8 @@ def fetch_article_body(url: str, max_chars: int = 6000) -> str:
     return text[:max_chars]
 
 
-def fetch_manual_url(country_code: str, url: str, source_label: str = "Manual") -> dict | None:
-    """手动添加：抓取 URL 的标题和正文，返回一条候选。"""
+def fetch_manual_url(country_code: str, url: str, source_label: str = "") -> dict | None:
+    """手动添加：区分载体（公众号/网站）与正文注明的原始媒体。"""
     try:
         html = fetch_public_response(url).text
     except Exception as exc:
@@ -347,12 +347,29 @@ def fetch_manual_url(country_code: str, url: str, source_label: str = "Manual") 
 
     body = fetch_article_body(url)
     host = urlparse(url).netloc.replace("www.", "")
-    canonical_source = source_utils.normalize_source_name(source_label, url=url)
+    carrier = source_utils.carrier_name_from_url(url)
+    supplied_source = source_utils.normalize_source_name(source_label)
+    detected_source = source_utils.detect_source_from_content(title=title, text=body, html=html)
+    if supplied_source and not source_utils.is_generic_source_name(supplied_source):
+        canonical_source = supplied_source
+    elif detected_source:
+        canonical_source = detected_source
+    else:
+        canonical_source = source_utils.best_source_name(source_label, article_url=url)
+    source_article_url = source_utils.find_source_article_url(canonical_source, html=html, base_url=url)
+    source_homepage = source_utils.source_homepage(
+        canonical_source,
+        url=source_article_url or ("" if source_utils.is_carrier_url(url) else url),
+    )
     return {
         "country_code": country_code,
         "source": canonical_source,
-        "source_original": f"{source_label} ({host})",
-        "source_homepage": source_utils.source_homepage(canonical_source, url=url),
+        "source_original": f"{carrier} ({host})",
+        "source_carrier": carrier,
+        "source_homepage": source_homepage,
+        "source_article_url": source_article_url,
+        "source_tier": 2 if canonical_source in {"Reuters", "Bloomberg", "Zawya", "Arab News", "The National"} else 3,
+        "source_category": "media" if canonical_source != "Original Publisher" else "manual",
         "title": title,
         "url": url,
         "published_at": datetime.utcnow().isoformat(),

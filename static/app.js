@@ -300,7 +300,9 @@ function normalizeCandidate(it, index = 0) {
     summary: it.summary || "",
     title_zh: it.title_zh || "",
     source_original: it.source_original || "",
+    source_carrier: it.source_carrier || "",
     source_homepage: it.source_homepage || "",
+    source_article_url: it.source_article_url || "",
     google_news_url: it.google_news_url || "",
     fetched_body: it.fetched_body || "",
     raw_lang: it.raw_lang || "en",
@@ -552,6 +554,7 @@ function cardHtml(it) {
   const topic = it.topic_cluster ? `<span class="text-[10px] bg-slate-100 text-slate-600 rounded-full px-2 py-0.5">${escapeHtml(it.topic_cluster)}</span>` : "";
   const route = it.route_country ? `<span class="text-[10px] bg-cyan-100 text-cyan-700 rounded-full px-2 py-0.5">route: ${escapeHtml(it.route_country)}</span>` : "";
   const manual = it.is_manual ? `<span class="text-[10px] bg-indigo-100 text-indigo-700 rounded-full px-2 py-0.5">manual</span>` : "";
+  const carrier = it.source_carrier ? `<span class="text-[10px] bg-violet-50 text-violet-700 rounded-full px-2 py-0.5">载体: ${escapeHtml(it.source_carrier)}</span>` : "";
   const layerReason = (it.layer_reasons || []).join(" / ");
   const sourceLabel = it.source || it.source_original || "";
   const discoveredByGoogle = Boolean(it.google_news_url) || host === "news.google.com";
@@ -559,7 +562,13 @@ function cardHtml(it) {
     ? `<button type="button" data-resolve-original="${escapeHtml(String(it.id))}" class="text-blue-600 hover:underline">解析并打开媒体原文</button>
        ${it.source_homepage ? `<a href="${escapeHtml(it.source_homepage)}" target="_blank" rel="noopener" class="text-slate-500 hover:underline">媒体首页</a>` : ""}
        <a href="${escapeHtml(it.google_news_url || it.url)}" target="_blank" rel="noopener" class="text-slate-400 hover:underline">Google News 发现页</a>`
-    : `<a href="${escapeHtml(it.url)}" target="_blank" rel="noopener" class="text-blue-600 hover:underline inline-flex items-center gap-1">原文 <span class="text-slate-400">(${escapeHtml(host)})</span></a>`;
+    : it.source_article_url
+      ? `<a href="${escapeHtml(it.source_article_url)}" target="_blank" rel="noopener" class="text-blue-600 hover:underline">发布方原文</a>
+         <a href="${escapeHtml(it.url)}" target="_blank" rel="noopener" class="text-slate-400 hover:underline">${escapeHtml(it.source_carrier || "转载")}页面</a>`
+      : it.source_carrier
+        ? `<a href="${escapeHtml(it.url)}" target="_blank" rel="noopener" class="text-blue-600 hover:underline">${escapeHtml(it.source_carrier)}页面</a>
+           ${it.source_homepage ? `<a href="${escapeHtml(it.source_homepage)}" target="_blank" rel="noopener" class="text-slate-500 hover:underline">原始媒体首页</a>` : ""}`
+        : `<a href="${escapeHtml(it.url)}" target="_blank" rel="noopener" class="text-blue-600 hover:underline inline-flex items-center gap-1">原文 <span class="text-slate-400">(${escapeHtml(host)})</span></a>`;
   return `
     <div class="news-card flex gap-3 p-4 border border-slate-100 rounded-2xl bg-white/88 ${it.selected ? "selected" : ""}" draggable="true" data-id="${escapeHtml(String(it.id))}">
       <input type="checkbox" data-id="${escapeHtml(String(it.id))}" ${it.selected ? "checked" : ""} class="mt-1 h-4 w-4 flex-none cursor-pointer accent-blue-600" />
@@ -571,6 +580,7 @@ function cardHtml(it) {
           </span>
           ${statusBadge(it)}
           ${manual}
+          ${carrier}
           ${route}
           ${watch}
           ${topic}
@@ -988,12 +998,12 @@ $("btnManualAdd").addEventListener("click", async () => {
       const r = await apiPost("/api/manual", {
         country_code: $("manualCountry").value,
         url,
-        source: $("manualSource").value || "Manual",
+        source: $("manualSource").value.trim(),
       });
       $("manualUrl").value = "";
       const next = [...CANDIDATES, r.item];
       setCandidates(next, { preserveSelected: true });
-      setStatus("已添加");
+      setStatus(`已添加；识别到原始来源：${r.item.source || "待人工确认"}`);
     });
   } catch (e) {
     setStatus("添加失败：" + e.message);

@@ -10,7 +10,7 @@ from app import source_utils
 from app.config import _env_int, load_sources, settings
 from app.main import app
 from app.models import FormattedItem
-from app.retriever import _validate_public_url, _watchlist_queries, resolve_publisher_url
+from app.retriever import _validate_public_url, _watchlist_queries, fetch_manual_url, resolve_publisher_url
 
 
 class SourceRegistryTests(unittest.TestCase):
@@ -31,6 +31,30 @@ class SourceRegistryTests(unittest.TestCase):
             ),
             "Reuters",
         )
+
+    def test_credited_source_is_detected_inside_reposted_content(self):
+        self.assertEqual(source_utils.detect_source_from_content(text="本文来源：ZAWYA"), "Zawya")
+        self.assertEqual(source_utils.detect_source_from_content(text="据路透社报道，该公司完成交易。"), "Reuters")
+
+    def test_manual_wechat_repost_separates_carrier_and_publisher(self):
+        body = "来源：ZAWYA。" + ("阿联酋投资机构宣布完成一项重大交易。" * 30)
+        html = f"""
+        <html><head>
+          <meta property="og:title" content="阿联酋投资机构完成交易" />
+          <meta property="og:site_name" content="微信公众平台" />
+        </head><body><article><p>来源：ZAWYA</p><p>{body}</p>
+          <a href="https://www.zawya.com/en/business/example">查看原文</a>
+        </article></body></html>
+        """
+        response = unittest.mock.Mock()
+        response.text = html
+        with patch("app.retriever.fetch_public_response", return_value=response):
+            item = fetch_manual_url("UAE", "https://mp.weixin.qq.com/s/example", "公众号")
+        self.assertIsNotNone(item)
+        self.assertEqual(item["source"], "Zawya")
+        self.assertEqual(item["source_carrier"], "公众号")
+        self.assertEqual(item["source_article_url"], "https://www.zawya.com/en/business/example")
+        self.assertEqual(item["source_homepage"], "https://www.zawya.com/")
 
     def test_registry_has_four_countries_and_metadata(self):
         countries = load_sources()
@@ -153,6 +177,36 @@ class StatelessGenerationTests(unittest.TestCase):
         self.assertIn("Source: Reuters", item.source_label_en)
         self.assertIn("来源：Reuters", item.source_label_zh)
         self.assertNotIn("Source: News", item.source_label_en)
+
+    def test_formatter_ai_can_replace_carrier_with_supported_publisher(self):
+        wechat_url = "https://mp.weixin.qq.com/s/example"
+        row = {
+            "country_code": "KSA",
+            "source": "公众号",
+            "source_carrier": "公众号",
+            "title": "Saudi company announces a transaction",
+            "url": wechat_url,
+            "published_at": "2026-08-14T00:00:00+00:00",
+            "fetched_body": ("The repost says the original report was published by Reuters. " * 8),
+        }
+        english = {
+            "en_title": "Saudi company announces a transaction",
+            "en_body": "On August 14, the company announced a transaction.",
+            "facts": {"dates": ["August 14, 2026"]},
+            "original_source_name": "Reuters",
+            "original_source_evidence": "published by Reuters",
+        }
+        chinese = {"cn_title": "沙特公司宣布一项交易", "cn_body": "8月14日，该公司宣布一项交易。"}
+        with (
+            patch("app.formatter.retriever.resolve_publisher_url", return_value=wechat_url),
+            patch("app.formatter._generate_english", return_value=english),
+            patch("app.formatter._translate_chinese", return_value=chinese),
+        ):
+            item = formatter.format_one(row, runtime_config={"openrouter_api_key": "test"})
+        self.assertIsNotNone(item)
+        self.assertEqual(item.source_name, "Reuters")
+        self.assertEqual(item.source_url, "https://www.reuters.com/")
+        self.assertIn("来源：Reuters", item.source_label_zh)
 
     def test_resolve_url_endpoint(self):
         google_url = "https://news.google.com/rss/articles/test"

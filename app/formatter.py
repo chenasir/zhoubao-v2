@@ -80,6 +80,12 @@ so English is the authoritative version.
 - Use thousand separators.
 - Do NOT include any source citation line in title or body.
 
+[Original publisher attribution]
+- Separately identify the ORIGINAL publisher explicitly credited by the article, such as Reuters or Zawya.
+- "公众号", "微信公众号", "网站", "网页", "WeChat", and similar terms are carriers, not publisher names.
+- For a repost, use the credited original publisher, not the account/site carrying the repost.
+- Do not guess. Return an empty string when the original publisher is not supported by the raw text.
+
 Return strict JSON:
 {
   "facts": {
@@ -90,6 +96,8 @@ Return strict JSON:
     "terms": [],
     "china_linkage": "..."
   },
+  "original_source_name": "",
+  "original_source_evidence": "",
   "en_title": "...",
   "en_body": "..."
 }
@@ -190,6 +198,7 @@ def _generate_english(
     user = {
         "country": row["country_code"],
         "source": row["source"],
+        "carrier": row.get("source_carrier") or row.get("source_original") or "",
         "url": row["url"],
         "resolved_publication_date": row.get("resolved_publication_date"),
         "raw_title": row["title"],
@@ -249,17 +258,45 @@ def format_one(
         published = _resolve_row_publication_date(row, html, body)
     row["resolved_publication_date"] = published.isoformat() if published else None
 
-    source = source_utils.best_source_name(
-        row.get("source") or "",
-        article_url=publisher_url,
-        homepage_url=row.get("source_homepage") or "",
+    raw_source = row.get("source") or ""
+    source_unresolved = source_utils.is_generic_source_name(raw_source)
+    content_source = source_utils.detect_source_from_content(
+        title=row.get("title") or "",
+        text=source_text,
+        html=html,
     )
+    if raw_source and not source_unresolved:
+        source = source_utils.best_source_name(
+            raw_source,
+            article_url=publisher_url,
+            homepage_url=row.get("source_homepage") or "",
+        )
+    else:
+        source = content_source or source_utils.best_source_name(
+            raw_source,
+            article_url=publisher_url,
+            homepage_url=row.get("source_homepage") or "",
+        )
 
     en_data = _generate_english(row, source_text, runtime_config)
+    model_source = source_utils.validate_model_source(
+        str(en_data.get("original_source_name") or ""),
+        source_text,
+    )
+    if source_unresolved and model_source:
+        source = model_source
     en_title = str(en_data.get("en_title", "")).strip()
     en_body = str(en_data.get("en_body", "")).strip()
     facts = en_data.get("facts") or {}
     cn_data = _translate_chinese(en_title, en_body, facts, runtime_config)
+    source_homepage = source_utils.source_homepage(source)
+    source_article_url = row.get("source_article_url") or ""
+    if source_article_url:
+        source_url = source_article_url
+    elif publisher_url and not source_utils.is_carrier_url(publisher_url):
+        source_url = publisher_url
+    else:
+        source_url = source_homepage or publisher_url or original_url or row.get("source_homepage", "")
     item = FormattedItem(
         country_code=row["country_code"],
         cn_title=str(cn_data.get("cn_title", "")).strip(),
@@ -270,7 +307,7 @@ def format_one(
         source_label_zh="",
         url=original_url,
         source_name=source,
-        source_url=publisher_url or original_url or row.get("source_homepage", ""),
+        source_url=source_url,
     )
     item = _postprocess_item(item, source=source, published=published)
     if _is_placeholder_item(item):

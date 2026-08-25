@@ -23,7 +23,9 @@ class CandidatePayload(BaseModel):
     country_code: str
     source: str
     source_original: str = ""
+    source_carrier: str = ""
     source_homepage: str = ""
+    source_article_url: str = ""
     source_tier: int = 3
     source_category: str = "media"
     title: str
@@ -90,7 +92,7 @@ class GenerateRequest(BaseModel):
 class ManualUrlRequest(BaseModel):
     country_code: str
     url: str
-    source: str = "Manual"
+    source: str = ""
 
 
 class RelatedSourcesRequest(BaseModel):
