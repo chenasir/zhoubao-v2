@@ -57,6 +57,31 @@ ATTRIBUTION_MARKER_RE = re.compile(
     re.IGNORECASE,
 )
 
+DOMAIN_SOURCE_RE = re.compile(
+    r"^(?:www\.)?(?:[a-z0-9-]+\.)+[a-z]{2,24}$",
+    re.IGNORECASE,
+)
+
+DOMAIN_BRANDS = {
+    "marketscreener.com": "MarketScreener",
+    "thenationalnews.com": "The National",
+    "swfinstitute.org": "SWFI",
+    "therealdeal.com": "The Real Deal",
+    "mitsloanme.com": "MIT Sloan Management Review Middle East",
+    "egyptoil-gas.com": "Egypt Oil & Gas",
+}
+
+SECOND_LEVEL_SUFFIXES = {
+    "co.uk",
+    "com.au",
+    "com.cn",
+    "com.hk",
+    "com.kz",
+    "com.sa",
+    "co.kr",
+    "co.za",
+}
+
 
 def is_generic_source_name(raw: str) -> bool:
     """Return True for discovery-channel labels that are not publisher names."""
@@ -89,6 +114,22 @@ def _clean_attribution_candidate(value: str) -> str:
     candidate = re.split(r"[。；;，,|丨｜\r\n]", candidate, maxsplit=1)[0].strip()
     candidate = re.sub(r"\s+(?:20\d{2}[-年/].*)$", "", candidate).strip()
     return candidate[:80]
+
+
+def _source_name_from_domain(raw: str, aliases: dict) -> str:
+    """Convert a bare publisher domain into a readable source label."""
+    value = (raw or "").strip().lower().removeprefix("www.").rstrip(".")
+    if not DOMAIN_SOURCE_RE.fullmatch(value):
+        return ""
+    if value in aliases:
+        return str(aliases[value])
+    if value in DOMAIN_BRANDS:
+        return DOMAIN_BRANDS[value]
+    parts = value.split(".")
+    suffix = ".".join(parts[-2:])
+    label_index = -3 if suffix in SECOND_LEVEL_SUFFIXES and len(parts) >= 3 else -2
+    label = parts[label_index].replace("-", " ")
+    return label.title()
 
 
 def detect_source_from_content(*, title: str = "", text: str = "", html: str = "") -> str:
@@ -198,6 +239,10 @@ def normalize_source_name(raw: str, url: str = "") -> str:
     if source in aliases.get("aliases", {}):
         return aliases["aliases"][source]
 
+    domain_source = _source_name_from_domain(source, aliases.get("aliases", {}))
+    if domain_source:
+        return domain_source
+
     low = source.lower()
     if "bloomberg" in low or "彭博" in source:
         return "Bloomberg"
@@ -223,6 +268,10 @@ def normalize_source_name(raw: str, url: str = "") -> str:
         return "MIT Sloan Management Review Middle East"
     if "therealdeal" in low or "the real deal" in low:
         return "The Real Deal"
+    if "marketscreener" in low:
+        return "MarketScreener"
+    if "thenationalnews" in low:
+        return "The National"
     if "egyptoil" in low or "egypt oil & gas" in low or "egypt oil and gas" in low:
         return "Egypt Oil & Gas"
     if "pulse" in low or "maeil" in low:

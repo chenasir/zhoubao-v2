@@ -36,6 +36,16 @@ class SourceRegistryTests(unittest.TestCase):
         self.assertEqual(source_utils.detect_source_from_content(text="本文来源：ZAWYA"), "Zawya")
         self.assertEqual(source_utils.detect_source_from_content(text="据路透社报道，该公司完成交易。"), "Reuters")
 
+    def test_domain_sources_are_rendered_as_names_without_tlds(self):
+        self.assertEqual(source_utils.normalize_source_name("marketscreener.com"), "MarketScreener")
+        self.assertEqual(source_utils.normalize_source_name("thenationalnews.com"), "The National")
+        self.assertEqual(source_utils.normalize_source_name("example-finance.com"), "Example Finance")
+        self.assertEqual(source_utils.normalize_source_name("publisher.co.uk"), "Publisher")
+        self.assertEqual(
+            source_utils.detect_source_from_content(text="来源：marketscreener.com"),
+            "MarketScreener",
+        )
+
     def test_manual_wechat_repost_separates_carrier_and_publisher(self):
         body = "来源：ZAWYA。" + ("阿联酋投资机构宣布完成一项重大交易。" * 30)
         html = f"""
